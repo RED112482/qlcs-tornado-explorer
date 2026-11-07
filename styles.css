@@ -80,3 +80,8 @@
 .wind-grid-stack .barb-0{z-index:3}
 .wind-grid-stack .barb-1{z-index:2}
 .wind-grid-stack .barb-3{z-index:1}
+
+/* v0.8.6 fixed screen-space station matrix: no backdrop, no label */
+.wind-grid-stack.barb-from-rap{opacity:1}
+.wind-grid-stack.barb-representative{opacity:.35}
+.wind-grid-icon{background:transparent!important;border:0!important;box-shadow:none!important}
