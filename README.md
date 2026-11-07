@@ -60,3 +60,73 @@ The site offers **KMOB, KEVX, KDGX, KHDC, KLIX, KEOX, KVAX, KTLH, KBMX, KJAN** a
 The basemap now uses OpenStreetMap's standard public tiles (no commercial basemap API key). State, county, and CWA boundaries come from the public [NWS Reference MapServer](https://mapservices.weather.noaa.gov/static/rest/services/nws_reference_maps/nws_reference_map/MapServer) using layer IDs 3, 2, and 1 respectively. These are *current* boundaries even when reviewing past tornado events. Online service availability and public tile usage policies apply.
 
 **Known constraints:** no NEXRAD Level II raw decoding, no radar velocity, no automatic UDCZ/mesovortex detection, and no objective verification. Manually entered winds drive the research-inspired segment score; it is not a tornado probability. This is research/training only.
+
+
+## v0.5 — Level II decoder + RAP profile option (2026-11-07)
+
+### What is now implemented
+- Flat unlabeled slate/gray land-water map. NWS state, county and CWA **geometries** are requested as GeoJSON (rather than label-rendered map images).
+- **Actual NEXRAD Level II** workflow using Unidata's `unidata-nexrad-level2` bucket. Py-ART decodes the **first sweep**, and projected native gate reflectivity is rasterized to georeferenced transparent PNG. This is **not** Level III radar imagery. Raw data remain external to GitHub; processed images are published to `data/`.
+- A GitHub Pages radar frame manifest (`data/manifest.json`), historical scan selection and loop controls. Until a workflow run publishes files, Level II mode will correctly report **No processed Level II frame**—it will not pretend that imagery is loading.
+- Experimental relative-score guidance: **red** = QTor-inspired index at/above user display threshold; **green** = below threshold; yellow dotted arrows = user-specified **system motion** toward direction. Downstream polygons are illustrative 15–26 km **motion projections**, not a physical tornado probability swath or a verified UDCZ.
+- Plotted meteorological wind barbs for 0/1/3 km AGL, **wind FROM direction** and **speed kt**.
+- Manual meteorological inputs always editable; optional RAP f00 representative profile import marked with valid time/model and changed to `MANUAL OVERRIDE` when a user edits input.
+
+### Process a real historical Level II case without local Python
+1. Open the repository's **Actions** tab.
+2. Choose **Process NEXRAD Level II** → **Run workflow**.
+3. For the 4 June 2024 SID case enter:
+   - `site`: `KHDC`
+   - `mode`: `historical`
+   - `start_utc`: `2024-06-04T21:00`
+   - `end_utc`: `2024-06-04T22:00`
+   - `max_scans`: `6`
+   - `rap_profile`: optional (unchecked recommended for first radar test).
+4. Once the workflow succeeds and commits its generated files, reload GitHub Pages. Select **Level II decoded sweep**, `KHDC`, **Historical case**, the same UTC window, and **Find archived scans**.
+5. Adjust the line and compare highlighted segments. The viewer is **research/training only**.
+
+For latest Level II choose `mode=latest` and a radar site; the workflow looks for scans in the previous 90 minutes. It is an **on-demand snapshot**, not a continuous low-latency stream. GitHub Pages alone cannot decode NEXRAD volume files, so new frames require workflow execution. This process can be scheduled later if GitHub Actions quotas allow.
+
+### Local decoder
+```bash
+pip install -r requirements-radar.txt
+python scripts/process_level2.py --site KHDC --start 2024-06-04T21:00 --end 2024-06-04T22:00 --max-files 6
+python -m http.server 8000
+```
+Then open `http://localhost:8000`.
+
+### Optional RAP profile ingestion
+
+The user interface needs: **10-m (0 km proxy), 1-km AGL and 3-km AGL wind vectors** (direction FROM °, speed in kt). For the forward side and yellow arrows it additionally needs **QLCS system motion TOWARD °**. The program computes 0–1 and 0–3 km bulk shear and the line-normal/parallel projections from these vectors. The system motion is separately user-specified; **RAP does not diagnose it**.
+
+The experimental `scripts/process_rap.py` obtains a site-nearest RAP **f00** wind profile from Herbie, attempts to sample 10-m wind, multiple pressure-level wind and height fields, subtracts model terrain, then interpolates wind vectors to **1 and 3 km AGL**. This is a **single representative site profile**, not a full two-dimensional RAP environmental grid along every line segment. The script fails explicitly if required fields/vertical bracketing are missing, and the Actions workflow deliberately allows RAP failure without hiding a successful radar job.
+
+Example:
+```bash
+python scripts/process_rap.py --site KHDC --time 2024-06-04T21:00
+```
+This writes `data/rap.json`, which the webpage can load, or you can import a profile from the sidebar. Expected format:
+
+```json
+{
+  "model": "RAP F00", "valid_time": "2024-06-04T21:00:00Z",
+  "site": "KHDC",
+  "winds": {
+    "dir0": 170, "spd0": 20,
+    "dir1": 200, "spd1": 40,
+    "dir3": 235, "spd3": 55
+  }
+}
+```
+
+**The JSON above shows only the schema; its example wind values are not historical measurements.** If you load such an example, the tool will interpret it as input, not as verified RAP data. Always verify provenance and time match before making meteorological interpretations.
+
+### Limitations and operational precautions
+- Neither native gate rasterization nor this index identifies a verified UDCZ or diagnoses SID/PMD mesovortex structure. Velocity interrogation and quantitative validation are not yet implemented.
+- Currently visualizes the *first available elevation sweep*, not a user-selectable full 3-D elevation sequence.
+- RAP vertical sampling is optional, experimental and **not yet validated across all historic cycles**; Herbie file names and available pressure fields vary.
+- The red/green swaths are **relative, uncalibrated diagnostic zones**, not greater or lower tornado probabilities.
+- The radar and RAP decoding workflow has been committed but **has not been run and confirmed successful on this repository** at the time of this update. No Level II images have been generated by this commit.
+- The public map services and S3 data source can have outages, missing scans, or changes to endpoint formats. An empty radar overlay is not meteorological evidence of no convection.
+
+Data provenance: [Unidata NEXRAD Level II on AWS](https://registry.opendata.aws/noaa-nexrad/), [Py-ART](https://arm-doe.github.io/pyart/), [RAP via Herbie](https://herbie.readthedocs.io/), [NWS reference GIS](https://mapservices.weather.noaa.gov/static/rest/services/nws_reference_maps/nws_reference_map/MapServer).
