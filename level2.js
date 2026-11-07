@@ -193,18 +193,39 @@
        iconAnchor:[24,24]})}).addTo(barbGrid);
      count++;
    }
-   // Place stations on ONE fixed, evenly spaced Web-Mercator map grid.
-   // Independent of RAP's rotated/irregular native gridpoint geometry.
+   // Build a complete rectangular MATRIX of equally spaced Web-Mercator
+   // positions, anchored to the radar site. RAP's rotated native sampling grid
+   // supplies the values only; it must NEVER determine the plotted positions.
    const actual=findSpatialGrid();
-   const zoom=map.getZoom(),center=map.getCenter(),latRad=center.lat*Math.PI/180;
-   const metersPerPixel=40075016.686*Math.max(.12,Math.cos(latRad))/(256*Math.pow(2,zoom));
-   // Keep the selected spacing in km, with a minimum of 78 screen pixels so
-   // the three stacked 48px SVGs remain distinct rather than crowding.
-   const stepPx=Math.max(78,spacing*1000/metersPerPixel);
-   const pixelBounds=map.getPixelBounds();
-   const xmin=Math.floor(pixelBounds.min.x/stepPx)*stepPx;
-   const ymin=Math.floor(pixelBounds.min.y/stepPx)*stepPx;
-   let usedSpatial=0,skippedOutside=0;
+   const zoom=map.getZoom(),siteLatLng=L.latLng(sites[$('site').value]);
+   const origin=map.project(siteLatLng,zoom);
+   const metersPerPixel=40075016.686*Math.cos(siteLatLng.lat*Math.PI/180)/(256*Math.pow(2,zoom));
+   const nominalStepPx=Math.max(70,spacing*1000/metersPerPixel);
+   const viewport=map.getPixelBounds();
+   // Restrict actual data to a rectangular footprint of sampled RAP locations.
+   // This does not imply availability outside the processed RAP data footprint.
+   let field=viewport;
+   let domain=null;
+   if(actual&&Array.isArray(actual.points)&&actual.points.length){
+     const all=actual.points;
+     const latitudes=all.map(p=>p.lat),longitudes=all.map(p=>p.lon);
+     const minLat=Math.min(...latitudes),maxLat=Math.max(...latitudes);
+     const minLon=Math.min(...longitudes),maxLon=Math.max(...longitudes);
+     // A modest inset prevents outside-domain extrapolation at the four corners.
+     const padLat=Math.min(.11,(maxLat-minLat)*.06);
+     const padLon=Math.min(.11,(maxLon-minLon)*.06);
+     domain=L.latLngBounds(
+       [minLat+padLat,minLon+padLon],
+       [maxLat-padLat,maxLon-padLon]
+     );
+     const nw=map.project(domain.getNorthWest(),zoom);
+     const se=map.project(domain.getSouthEast(),zoom);
+     field=L.bounds(
+       L.point(Math.max(viewport.min.x,nw.x),Math.max(viewport.min.y,nw.y)),
+       L.point(Math.min(viewport.max.x,se.x),Math.min(viewport.max.y,se.y))
+     );
+   }
+   let plottedRows=0,plottedCols=0;
    const uniform={};
    for(const level of ['0','1','3']){
      uniform['dir'+level]=Number($('dir'+level).value);
@@ -212,48 +233,57 @@
    }
    function gridWindsAt(lat,lon){
      if(!actual||!Array.isArray(actual.points)||!actual.points.length)return uniform;
-     // Inverse-distance vector interpolation from the nearest 4 actual RAP
-     // spatial-profile locations. Never interpolate directions as scalars.
-     const nearby=actual.points.map(point=>{
+     // Interpolate the VECTOR (u/v) from four nearest genuine RAP profile
+     // locations; interpolation of wind direction angles would be incorrect.
+     const nearest=actual.points.map(point=>{
        const dLat=(point.lat-lat)*111.2;
        const dLon=(point.lon-lon)*111.2*Math.cos(lat*Math.PI/180);
        return {point,d:Math.hypot(dLat,dLon)};
      }).sort((p,q)=>p.d-q.d).slice(0,4);
-     // Outside the processed RAP domain: do not fabricate gridded model winds.
-     if(!nearby.length||nearby[0].d>39)return null;
+     if(nearest.length<1)return null;
      const output={};
      for(const level of ['0','1','3']){
-       let u=0,v=0,weightSum=0;
-       for(const {point,d} of nearby){
+       let u=0,v=0,total=0;
+       for(const {point,d} of nearest){
          const speed=Number(point.winds?.['spd'+level]),from=Number(point.winds?.['dir'+level]);
          if(!Number.isFinite(speed)||!Number.isFinite(from))continue;
-         const angle=from*Math.PI/180,weight=1/Math.max(d,1.5)**2;
-         u+=(-speed*Math.sin(angle))*weight;
-         v+=(-speed*Math.cos(angle))*weight;
-         weightSum+=weight;
+         const weight=1/Math.max(d,1.5)**2,theta=from*Math.PI/180;
+         u+=-speed*Math.sin(theta)*weight;
+         v+=-speed*Math.cos(theta)*weight;total+=weight;
        }
-       if(!weightSum)return null;
-       u/=weightSum;v/=weightSum;
+       if(total===0)return null;
+       u/=total;v/=total;
        output['spd'+level]=Math.hypot(u,v);
        output['dir'+level]=(Math.atan2(-u,-v)*180/Math.PI+360)%360;
      }
-     usedSpatial++;
      return output;
    }
-   outer:for(let y=ymin;y<=pixelBounds.max.y+1;y+=stepPx){
-     for(let x=xmin;x<=pixelBounds.max.x+1;x+=stepPx){
-       if(count>=75)break outer;
-       const latlon=map.unproject(L.point(x,y),zoom);
-       if(!map.getBounds().contains(latlon))continue;
-       const winds=gridWindsAt(latlon.lat,latlon.lng);
-       if(!winds){skippedOutside++;continue;}
-       addBarbs(latlon.lat,latlon.lng,winds);
+   // Fixed integer row/column index ranges mean no diagonal displacement,
+   // skipped interior cells, or changes in phase when the viewer is panned.
+   let stepPx=nominalStepPx;
+   if(field.min.x<field.max.x&&field.min.y<field.max.y){
+     const candidateCols=Math.floor((field.max.x-field.min.x)/stepPx)+1;
+     const candidateRows=Math.floor((field.max.y-field.min.y)/stepPx)+1;
+     if(candidateRows*candidateCols>100)stepPx*=Math.sqrt(candidateRows*candidateCols/100);
+     const iMin=Math.ceil((field.min.x-origin.x)/stepPx);
+     const iMax=Math.floor((field.max.x-origin.x)/stepPx);
+     const jMin=Math.ceil((field.min.y-origin.y)/stepPx);
+     const jMax=Math.floor((field.max.y-origin.y)/stepPx);
+     plottedCols=Math.max(0,iMax-iMin+1);
+     plottedRows=Math.max(0,jMax-jMin+1);
+     for(let j=jMin;j<=jMax;j++){
+       for(let i=iMin;i<=iMax;i++){
+         const geo=map.unproject(L.point(origin.x+i*stepPx,origin.y+j*stepPx),zoom);
+         const winds=gridWindsAt(geo.lat,geo.lng);
+         if(winds)addBarbs(geo.lat,geo.lng,winds);
+       }
      }
    }
+
    if(actual){
-     $('windGridStatus').textContent='EVENLY SPACED RAP BARB GRID • '+count+' stations at ~'+spacing+' km spacing • K'+$('site').value+' • '+niceTime(actual.valid_time)+' • wind vectors interpolated from nearby actual spatial RAP nodes. Locations outside archived RAP coverage are omitted.';
+     $('windGridStatus').textContent='SQUARE RAP BARB GRID • '+plottedRows+' rows × '+plottedCols+' columns ('+count+' points) • K'+$('site').value+' • '+niceTime(actual.valid_time)+' • regular map positions, wind vectors interpolated from RAP spatial profiles within their processed coverage.';
    }else{
-     $('windGridStatus').textContent='EVENLY SPACED UNIFORM BARB GRID • '+count+' stations at ~'+spacing+' km spacing. Repeated site/manual winds (NOT independent RAP values).';
+     $('windGridStatus').textContent='SQUARE UNIFORM BARB GRID • '+plottedRows+' rows × '+plottedCols+' columns ('+count+' points). Uniform manual/site winds repeated (not spatial RAP vectors).';
    }
  }
  async function loadSpatialGrid(){
