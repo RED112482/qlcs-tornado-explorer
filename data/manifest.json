@@ -1,5 +1,63 @@
 {
   "version": 1,
-  "updated": null,
-  "frames": []
+  "updated": "2026-11-07T09:46:51.518411+00:00",
+  "frames": [
+    {
+      "site": "KHDC",
+      "time": "2024-06-04T21:00:37Z",
+      "url": "./data/KHDC/20240604_210037.png",
+      "bounds": [
+        [
+          26.374685953750273,
+          -95.21981437996115
+        ],
+        [
+          34.66332914136873,
+          -85.59505536974066
+        ]
+      ],
+      "elevation_deg": 0.31,
+      "field": "reflectivity",
+      "source": "Unidata NEXRAD Level II",
+      "s3_key": "2024/06/04/KHDC/KHDC20240604_210037_V06"
+    },
+    {
+      "site": "KHDC",
+      "time": "2024-06-04T21:16:27Z",
+      "url": "./data/KHDC/20240604_211627.png",
+      "bounds": [
+        [
+          26.37468511918408,
+          -95.21974413613965
+        ],
+        [
+          34.66332464840198,
+          -85.59505323240852
+        ]
+      ],
+      "elevation_deg": 0.31,
+      "field": "reflectivity",
+      "source": "Unidata NEXRAD Level II",
+      "s3_key": "2024/06/04/KHDC/KHDC20240604_211627_V06"
+    },
+    {
+      "site": "KHDC",
+      "time": "2024-06-04T21:32:17Z",
+      "url": "./data/KHDC/20240604_213217.png",
+      "bounds": [
+        [
+          26.374684293738767,
+          -95.21975084473992
+        ],
+        [
+          34.663326475376074,
+          -85.59505323240852
+        ]
+      ],
+      "elevation_deg": 0.31,
+      "field": "reflectivity",
+      "source": "Unidata NEXRAD Level II",
+      "s3_key": "2024/06/04/KHDC/KHDC20240604_213217_V06"
+    }
+  ]
 }
