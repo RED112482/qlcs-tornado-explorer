@@ -36,3 +36,36 @@
 .archive-window.invalid{border-color:#cb756f;color:#ffd5d0}
 #availableDates{width:100%}
 #archiveFields .field label{display:block;margin:0 0 6px}
+
+/* v0.8 – clearer research semantics and hover explanations */
+.science-explainer{background:#1b3343;border:1px solid #5d91a5;border-left:5px solid #7bdfd4;border-radius:11px;padding:13px 17px;margin-bottom:13px;font-size:13px;line-height:1.58;color:#e9f7fb}
+.science-explainer strong{color:#ffffff}
+.science-equation{font-size:11px;color:#bfe4ee;margin-top:9px;padding-top:9px;border-top:1px solid #436074;font-family:ui-monospace,Consolas,monospace;line-height:1.6}
+.help-tip{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border:1px solid #76c8d7;color:#c5f9fe;background:#214658;border-radius:50%;cursor:help;font:800 11px/1 Arial,sans-serif;vertical-align:middle;position:relative;flex:none;z-index:620}
+.help-tip:hover,.help-tip:focus{background:#c1f6f5;color:#0f2837;outline:2px solid #7dc6dd}
+.help-tip::after{content:attr(data-help);display:none;position:absolute;left:0;top:calc(100% + 7px);transform:translateX(-30%);width:min(255px,73vw);max-width:255px;white-space:normal;text-align:left;font:500 12px/1.45 Inter,Arial,sans-serif;background:#0b2535;border:1px solid #91cede;border-radius:8px;padding:11px 12px;color:#edfaff;box-shadow:0 8px 25px #000b;z-index:9999;pointer-events:none}
+.help-tip:hover::after,.help-tip:focus::after{display:block}
+.sidebar section{overflow:visible}
+.sidebar .field{position:relative}
+.sidebar .field label{font-weight:600}
+.sidebar input[type="number"]:focus,.sidebar select:focus{outline:2px solid #78cadf;outline-offset:1px}
+.freehand-btn{background:#2d485b;border-color:#7ab8cf;font-weight:800}
+.freehand-btn.active{background:#147b75;border-color:#83ffe7;color:#fff;box-shadow:0 0 0 2px #27dabb44}
+.freehand-active,.freehand-active .leaflet-interactive{cursor:crosshair!important}
+.legend{font-size:12px;max-width:295px;background:#0b1e2df2;border:1px solid #7b9aac;padding:13px 14px;box-shadow:0 5px 20px #0008;gap:8px}
+.legend b{color:#edfbff;font-size:13px}
+.legend .sw{height:6px;width:22px;border-radius:3px}
+.legend .sw.favorable{background:#38e58c}
+.legend .sw.limited{background:#ed6665}
+.legend .sw.orientation{background:#edf5ff}
+.legend .sw.motion{background:#ffe16b}
+.legend-note{font-size:11px;color:#d7e0e8;border-top:1px solid #40596c;padding-top:8px;line-height:1.5}
+.sidebar h2{font-weight:800;letter-spacing:.15px;color:#e9fcff}
+.wind-grid-icon{border:none!important;background:transparent!important}
+.wind-grid-icon .barb-cluster{display:flex;align-items:flex-start;justify-content:center;gap:0;background:#11252ed8;border:1px solid #547581aa;border-radius:6px;box-shadow:0 1px 5px #0008;padding:1px 0}
+.wind-grid-icon .barb-unit{display:flex;flex-direction:column;align-items:center;width:38px;min-width:38px;color:#e7f6ff;line-height:1}
+.wind-grid-icon .barb-unit svg{display:block;width:37px;height:43px;overflow:visible}
+.wind-grid-icon .barb-unit small{font-size:10px;line-height:1.2;color:#f5f9fc;font-weight:700;text-shadow:0 1px 2px #000}
+.wind-grid-icon .barb-cluster:not(.barb-triplet){width:45px}
+#barbSpacingValue{font-variant-numeric:tabular-nums}
+@media(max-width:700px){.science-explainer{font-size:12px}.legend{max-width:220px;font-size:10px;padding:9px}.mapnotice{font-size:10px}.wind-grid-icon .barb-triplet{opacity:.9}}
