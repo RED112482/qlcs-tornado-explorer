@@ -53,31 +53,58 @@
  function deriveVectors(){
    if(!A||!B)return null;
    const dt=(Date.parse(B.time)-Date.parse(A.time))/3600000;
-   if(!(dt>0&&dt<=2))throw Error('Two scans must be 0–120 minutes apart to estimate motion reliably.');
+   if(!(dt>0&&dt<=2))throw Error('Two scan times must be 0–120 min apart.');
    const la=normalizedLine(A.coords),lb=normalizedLine(B.coords);
    if(!la||!lb)throw Error('Traced line is too short to estimate motion.');
-   const da=distance(la.pts[0],lb.pts[0])+distance(la.pts[la.pts.length-1],lb.pts[lb.pts.length-1]);
-   const db=distance(la.pts[0],lb.pts[lb.pts.length-1])+distance(la.pts[la.pts.length-1],lb.pts[0]);
-   if(db<da){lb.pts.reverse();lb.cumulative=[0];for(let i=1;i<lb.pts.length;i++)lb.cumulative.push(lb.cumulative[i-1]+distance(lb.pts[i-1],lb.pts[i]));}
-   const n=MAXPOINTS;
-   const motion=[];
-   for(let k=0;k<n;k++){
-     const f=k/(n-1),p=at(la,f),q=at(lb,f),km=distance(p,q);
-     const speed=Math.min(110,km/dt/1.852);
-     motion.push({f,atA:p,atB:q,dir:bearingBetween(p,q),speed,km});
+   const forward=distance(la.pts[0],lb.pts[0])+distance(la.pts.at(-1),lb.pts.at(-1));
+   const reverse=distance(la.pts[0],lb.pts.at(-1))+distance(la.pts.at(-1),lb.pts[0]);
+   if(reverse<forward){
+     lb.pts.reverse();
+     lb.cumulative=[0];
+     for(let i=1;i<lb.pts.length;i++)lb.cumulative.push(lb.cumulative[i-1]+distance(lb.pts[i-1],lb.pts[i]));
    }
-   // Line-pairing is approximate; endpoint stretching is interpreted as
-   // expansion, not established physical motion of individual features.
-   return {dt,motion,a:la,b:lb};
+   const motion=[];
+   const n=MAXPOINTS;
+   for(let k=0;k<n;k++){
+     const frac=k/(n-1),p=at(la,frac),q=at(lb,frac),km=distance(p,q);
+     const speed=Math.min(110,km/dt/1.852);
+     const dir=bearing(p,q);
+     motion.push({f:frac,atA:p,atB:q,dir,speed,km});
+   }
+   // Robust dominant translation: median of interior east/north speeds avoids
+   // extrapolating rapidly growing/shortening endpoints as translational motion.
+   const east=[],north=[];
+   for(const m of motion.slice(3,-3)){
+     east.push(m.speed*Math.sin(rad(m.dir)));
+     north.push(m.speed*Math.cos(rad(m.dir)));
+   }
+   const median=values=>{const sorted=values.slice().sort((a,b)=>a-b);return sorted[Math.floor(sorted.length/2)]||0;};
+   const dominant={east:median(east),north:median(north)};
+   dominant.speed=Math.hypot(dominant.east,dominant.north);
+   dominant.dir=(Math.atan2(dominant.east,dominant.north)*180/Math.PI+360)%360;
+   return {dt,motion,a:la,b:lb,dominant};
  }
  function interpolateMotion(vectors,f){
-   const pos=f*(vectors.length-1),i=Math.min(vectors.length-2,Math.floor(pos));
-   const t=Math.max(0,Math.min(1,pos-i));
-   const a=vectors[i],b=vectors[i+1];
-   // These are movement TOWARD vectors, not meteorological wind-FROM inputs.
-   const au=a.speed*Math.sin(rad(a.dir)),av=a.speed*Math.cos(rad(a.dir));
-   const bu=b.speed*Math.sin(rad(b.dir)),bv=b.speed*Math.cos(rad(b.dir));
-   const u=au*(1-t)+bu*t,v=av*(1-t)+bv*t;
+   const pos=f*(vectors.motion.length-1),index=Math.min(vectors.motion.length-2,Math.floor(pos));
+   // Smooth over adjacent line elements, so single vertex correspondence errors
+   // do not produce kinks/spikes in downstream QLCS line geometry.
+   let east=0,north=0,total=0;
+   const smoothingRadius=4;
+   for(let j=Math.max(0,index-smoothingRadius);j<=Math.min(vectors.motion.length-1,index+smoothingRadius);j++){
+     const m=vectors.motion[j],weight=smoothingRadius+1-Math.abs(j-index);
+     east+=m.speed*Math.sin(rad(m.dir))*weight;
+     north+=m.speed*Math.cos(rad(m.dir))*weight;
+     total+=weight;
+   }
+   east/=total;north/=total;
+   const dominant=vectors.dominant;
+   const freedom=(100-Number($('shapeLock').value))/100; // 90% locked → 10% differential
+   // Max 12 kt local variation before the shape-preservation blend, preventing
+   // unrealistic divergent ends and overturning/folding projected line segments.
+   let de=east-dominant.east,dn=north-dominant.north;
+   const delta=Math.hypot(de,dn),maxLocal=12;
+   if(delta>maxLocal){de*=maxLocal/delta;dn*=maxLocal/delta;}
+   const u=dominant.east+de*freedom,v=dominant.north+dn*freedom;
    return {dir:(Math.atan2(u,v)*180/Math.PI+360)%360,speed:Math.hypot(u,v)};
  }
  function geoProject(p,v,hours){return dest(p,v.dir,Math.min(500,v.speed*1.852*hours));}
@@ -85,6 +112,7 @@
    forecast.clearLayers();
    $('forecastHoursValue').textContent=Number($('forecastHours').value).toFixed(1)+' h';
    $('forecastSpreadValue').textContent=$('forecastSpread').value+' km/h';
+   $('shapeLockValue').textContent=$('shapeLock').value+'%';
    if(!$('showForecast').checked){$('motionForecastStatus').textContent='Future envelopes hidden.';return;}
    const latest=drawn.getLayers()[0];
    const baseCoords=B?B.coords:(latest?latest.getLatLngs().map(p=>[p.lat,p.lng]):null);
@@ -113,7 +141,7 @@
    const now=[],future=[],vectors=[];
    for(let k=0;k<sampleCount;k++){
      const f=k/(sampleCount-1),p=at(line,f);
-     const mv=derived?interpolateMotion(derived.motion,f):{dir:manualDirection,speed:manualSpeed};
+     const mv=derived?interpolateMotion(derived,f):{dir:manualDirection,speed:manualSpeed};
      const q=geoProject(p,mv,hours);
      now.push(p);future.push(q);vectors.push(mv);
    }
@@ -125,12 +153,24 @@
      const color=val===null?'#82c4ea':favorable?'#35e58a':'#f17770';
      const a=future[k-1],b=future[k];
      L.polyline([a,b],{pane:'forecastPane',color,weight:5,opacity:.9,dashArray:'10 6',interactive:false}).addTo(forecast);
-     const uncertainty=Math.min(100,spread*hours);
-     // Outward uncertainty ribbon is schematic; centerline plus flanks.
-     const v=vectors[k],side=(v.dir+90)%360;
-     const aa=dest(a,side,uncertainty),bb=dest(b,side,uncertainty);
-     const cc=dest(b,(side+180)%360,uncertainty),dd=dest(a,(side+180)%360,uncertainty);
-     L.polygon([aa,bb,cc,dd],{pane:'forecastPane',stroke:false,fillColor:color,fillOpacity:.075,interactive:false}).addTo(forecast);
+
+   }
+   // One coherent uncertainty ribbon following the SHAPE of Scan B, not
+   // separate segment rectangles whose differing azimuths form giant wedges.
+   // Bound display width to avoid visually implying unrealistic tornado swaths.
+   const width=Math.min(16,spread*hours);
+   if(width>0){
+     const outer=[],inner=[];
+     for(let k=0;k<future.length;k++){
+       const lo=future[Math.max(0,k-1)],hi=future[Math.min(future.length-1,k+1)];
+       const tangent=bearing(lo,hi),normal=(tangent+90)%360;
+       outer.push(dest(future[k],normal,width));
+       inner.push(dest(future[k],(normal+180)%360,width));
+     }
+     L.polygon([...outer,...inner.reverse()],{
+       pane:'forecastPane',color:'#d8e8ee',weight:1,opacity:.25,
+       fillColor:'#80b7c8',fillOpacity:.055,interactive:false
+     }).addTo(forecast);
    }
    // Draw intermediate projected positions every 30 minutes for a Warngen-like
    // timeline of line motion, retaining the same representative score classes.
@@ -154,14 +194,12 @@
      icon:L.divIcon({className:'motion-hour-label final',
        html:'<span>+'+hours.toFixed(1)+'h</span>',iconSize:[48,24],iconAnchor:[0,12]})
    }).addTo(forecast);
-   const tickEvery=5;
+   const tickEvery=9;
    for(let k=0;k<sampleCount;k+=tickEvery){
      L.polyline([now[k],future[k]],{pane:'forecastPane',color:'#ffe46e',weight:2,opacity:.88,dashArray:'6 5',interactive:false}).addTo(forecast);
    }
    if(derived){
-     const speeds=derived.motion.map(x=>x.speed);
-     const min=Math.min(...speeds),max=Math.max(...speeds),mean=speeds.reduce((a,b)=>a+b,0)/speeds.length;
-     $('motionForecastStatus').textContent='Two-frame local motion: '+derived.dt.toFixed(2)+' h between scans. Segment speeds '+min.toFixed(0)+'–'+max.toFixed(0)+' kt (mean '+mean.toFixed(0)+' kt). Conditional '+hours.toFixed(1)+'-h projection; ±'+(spread*hours).toFixed(0)+' km display uncertainty. Spatially varying motion may include line growth, deformation, or drawing correspondence errors.';
+     $('motionForecastStatus').textContent='A→B '+(derived.dt*60).toFixed(1)+' min; dominant translation '+derived.dominant.speed.toFixed(0)+' kt toward '+derived.dominant.dir.toFixed(0)+'°. Scan B shape preserved '+$('shapeLock').value+'%; local variations smoothed and limited. +'+hours.toFixed(1)+' h projection; schematic envelope ±'+width.toFixed(0)+' km (max 16 km). NOT a probability forecast.';
    }else{
      $('motionForecastStatus').textContent='Manual '+manualDirection.toFixed(0)+'° TOWARD at '+manualSpeed.toFixed(0)+' kt: conditional '+hours.toFixed(1)+'-h position, ±'+(spread*hours).toFixed(0)+' km uncertainty. Assumes no change in system direction, speed, orientation or environment.';
    }
@@ -170,10 +208,15 @@
  $('captureB').onclick=()=>capture('B');
  $('calculateMotion').onclick=compute;
  $('resetMotion').onclick=()=>{A=null;B=null;forecast.clearLayers();previous.clearLayers();$('motionCaptureStatus').textContent='Captures cleared. Draw a leading edge and save Scan A.';$('motionForecastStatus').textContent='Two-frame motion not yet calculated.';};
- for(const id of ['motionMethod','motionSpeedKt','forecastHours','forecastSpread','showForecast'])
+ for(const id of ['motionMethod','motionSpeedKt','forecastHours','forecastSpread','shapeLock','showForecast'])
    $(id).addEventListener('input',compute);
  // Update on redraw/environment adjustments but do NOT overwrite captured shapes.
  $('analyze').addEventListener('click',compute);
  $('scanSlider').addEventListener('input',()=>{if(A&&!B)$('motionCaptureStatus').textContent='Scan A at '+A.time+' saved. Draw the line on the new scan and capture B.';});
+ $('advanceCapture').onclick=()=>{
+   if(!A){$('motionCaptureStatus').textContent='Draw and capture Scan A first.';return;}
+   $('scanForward').click();
+   $('motionCaptureStatus').textContent='Moved to next available radar scan. Use Freehand or Polyline to redraw its leading edge, then capture Scan B.';
+ };
  window.qlcsMotion={compute};
 })();
