@@ -22,25 +22,25 @@ function refresh(){
  const site=$('site').value,product=$('product').value,historical=$('mode').value==='archive';
  if(historical&&!scanTimes.length){$('radarStatus').textContent='Choose archived scans';return;}
  const ts=historical?scanTimes[Number($('scanSlider').value)]:null;
- const stamp=ts?ts.slice(0,16).replace(/[-:T]/g,''):'0';
- const base='cache'; // IEM documentation's primary archive and realtime tile endpoint.
+ const stamp=ts?ts.slice(0,16).replace(/[-:T]/g,''):'0'; // YYYYMMDDHHmm UTC
+ const base='c'; // IEM current TMS endpoint (also retry legacy /cache/ if needed).
  const tileUrl=IEM+'/'+base+'/tile.py/1.0.0/ridge::'+site+'-'+product+'-'+stamp+'/{z}/{x}/{y}.png';
  radar=L.tileLayer(tileUrl,{tms:false,pane:'radarPane',maxZoom:13,maxNativeZoom:10,opacity:Number($('radarOpacity').value)/100,attribution:'© Iowa Environmental Mesonet',keepBuffer:2}).addTo(map);
  const previewCoords=map.project(L.latLng(sites[site]),8).divideBy(256).floor();
  const directUrl=tileUrl.replace('{z}','8').replace('{x}',String(previewCoords.x)).replace('{y}',String(previewCoords.y));
  $('radarDirect').href=directUrl;
  $('radarDirect').textContent='Open source radar tile (K'+site+' '+product+')';
- let success=false,errors=0;
+ let success=false,errors=0,retried=false;
  const timeout=setTimeout(()=>{if(!success){$('radarStatus').textContent='Radar slow/unavailable';$('scanStatus').textContent='No radar tile confirmed in 12 seconds. Open the source radar tile below to test the provider, or try another product.';}},12000);
  radar.on('tileload',()=>{success=true;clearTimeout(timeout);$('radarStatus').textContent='Radar tiles loaded (may be clear-air)';});
- radar.on('tileerror',()=>{if(!success&&++errors>2){clearTimeout(timeout);$('radarStatus').textContent='Radar tile error';$('scanStatus').textContent='IEM tile requests failed. Open the source tile link for the actual provider response; try N0Z or another site/time.';}});
+ radar.on('tileerror',()=>{if(!success&&++errors>2){if(!retried){retried=true;errors=0;radar.setUrl(tileUrl.replace('/c/tile.py/','/cache/tile.py/'));$('radarStatus').textContent='Retrying radar alternate server path';}else{clearTimeout(timeout);$('radarStatus').textContent='Radar tile error';$('scanStatus').textContent='IEM radar tile service failed on both paths. Test source link or change product/site.';}}});
  $('radarStatus').textContent='Loading '+site+' '+product;
  $('radarTime').textContent='K'+site+' '+product+' • '+(ts?ts+' UTC':'latest available');
 }
 async function findScans(){
  stopPlay();scanTimes=[];$('scanSlider').disabled=true;$('scanLabel').textContent='0/0';
  const a=$('startUTC').value,b=$('endUTC').value;
- const t0=Date.parse(a+':00Z'),t1=Date.parse(b+':00Z');
+ const t0=Date.parse(a+':00Z'),t1=Date.parse(b+':00Z'); // explicitly UTC: datetime-local is wall-clock text
  if(!Number.isFinite(t0)||!Number.isFinite(t1)||t1<=t0||t1-t0>6*3600e3){$('scanStatus').textContent='Enter a UTC window of up to 6 hours.';return;}
  $('scanStatus').textContent='Finding exact scan timestamps…';
  const q=new URLSearchParams({operation:'list',radar:$('site').value,product:$('product').value,start:new Date(t0).toISOString().slice(0,16)+'Z',end:new Date(t1).toISOString().slice(0,16)+'Z'});
@@ -49,7 +49,9 @@ async function findScans(){
   const payload=await response.json();
   let items=Array.isArray(payload)?payload:(payload.scans||payload.times||payload.timestamps||payload.data||[]);
   if(items&&typeof items==='object'&&!Array.isArray(items))items=Object.values(items);
-  scanTimes=items.map(x=>typeof x==='string'?x:(x.ts||x.time||x.valid||x.timestamp||'')).map(x=>String(x).replace(/:00Z$/,'Z')).filter(x=>/^\d{4}-\d\d-\d\dT\d\d:\d\dZ$/.test(x));
+  scanTimes=items.map(x=>typeof x==='string'?x:(x.ts||x.time||x.valid||x.timestamp||''))
+   .map(x=>String(x).trim()).filter(x=>Number.isFinite(Date.parse(x)))
+   .map(x=>new Date(x).toISOString().slice(0,16)+'Z'); // canonical UTC minute timestamps, retains exact archived minute
   if(!scanTimes.length)throw Error('No archived '+$('product').value+' scans in selected window.');
   $('scanSlider').max=scanTimes.length-1;$('scanSlider').value='0';$('scanSlider').disabled=false;
   $('scanStatus').textContent=scanTimes.length+' scans found.';setScan(0);
