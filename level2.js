@@ -193,28 +193,68 @@
        iconAnchor:[24,24]})}).addTo(barbGrid);
      count++;
    }
+   // Place stations on ONE fixed, evenly spaced Web-Mercator map grid.
+   // Independent of RAP's rotated/irregular native gridpoint geometry.
    const actual=findSpatialGrid();
-   if(actual&&Array.isArray(actual.points)&&actual.points.length){
-     const thinning=Math.max(1,Math.round(spacing/Number(actual.nominal_spacing_km||25)));
-     for(const point of actual.points){
-       if(point.row%thinning||point.col%thinning)continue;
-       addBarbs(point.lat,point.lon,point.winds||{});
-     }
-     $('windGridStatus').textContent='ACTUAL SPATIAL RAP • K'+$('site').value+' • '+niceTime(actual.valid_time)+' • '+count+' displayed grid nodes • independent local 10-m/1-/3-km AGL RAP winds (native model points; nominal sampling ~'+(thinning*(actual.nominal_spacing_km||25))+' km).';
-     return;
+   const zoom=map.getZoom(),center=map.getCenter(),latRad=center.lat*Math.PI/180;
+   const metersPerPixel=40075016.686*Math.max(.12,Math.cos(latRad))/(256*Math.pow(2,zoom));
+   // Keep the selected spacing in km, with a minimum of 78 screen pixels so
+   // the three stacked 48px SVGs remain distinct rather than crowding.
+   const stepPx=Math.max(78,spacing*1000/metersPerPixel);
+   const pixelBounds=map.getPixelBounds();
+   const xmin=Math.floor(pixelBounds.min.x/stepPx)*stepPx;
+   const ymin=Math.floor(pixelBounds.min.y/stepPx)*stepPx;
+   let usedSpatial=0,skippedOutside=0;
+   const uniform={};
+   for(const level of ['0','1','3']){
+     uniform['dir'+level]=Number($('dir'+level).value);
+     uniform['spd'+level]=Number($('spd'+level).value);
    }
-   const south=Math.max(-85,bounds.getSouth()),north=Math.min(85,bounds.getNorth()),
-         west=Math.max(-180,bounds.getWest()),east=Math.min(180,bounds.getEast());
-   const midLat=(south+north)/2,latStep=spacing/111.2,
-         lonStep=spacing/(111.2*Math.max(.22,Math.cos(midLat*Math.PI/180)));
-   const winds={};
-   for(const level of ['0','1','3']){winds['dir'+level]=Number($('dir'+level).value);winds['spd'+level]=Number($('spd'+level).value);}
-   for(let lat=Math.ceil(south/latStep)*latStep;lat<=north&&count<75;lat+=latStep){
-     for(let lon=Math.ceil(west/lonStep)*lonStep;lon<=east&&count<75;lon+=lonStep){
-       addBarbs(lat,lon,winds);
+   function gridWindsAt(lat,lon){
+     if(!actual||!Array.isArray(actual.points)||!actual.points.length)return uniform;
+     // Inverse-distance vector interpolation from the nearest 4 actual RAP
+     // spatial-profile locations. Never interpolate directions as scalars.
+     const nearby=actual.points.map(point=>{
+       const dLat=(point.lat-lat)*111.2;
+       const dLon=(point.lon-lon)*111.2*Math.cos(lat*Math.PI/180);
+       return {point,d:Math.hypot(dLat,dLon)};
+     }).sort((p,q)=>p.d-q.d).slice(0,4);
+     // Outside the processed RAP domain: do not fabricate gridded model winds.
+     if(!nearby.length||nearby[0].d>39)return null;
+     const output={};
+     for(const level of ['0','1','3']){
+       let u=0,v=0,weightSum=0;
+       for(const {point,d} of nearby){
+         const speed=Number(point.winds?.['spd'+level]),from=Number(point.winds?.['dir'+level]);
+         if(!Number.isFinite(speed)||!Number.isFinite(from))continue;
+         const angle=from*Math.PI/180,weight=1/Math.max(d,1.5)**2;
+         u+=(-speed*Math.sin(angle))*weight;
+         v+=(-speed*Math.cos(angle))*weight;
+         weightSum+=weight;
+       }
+       if(!weightSum)return null;
+       u/=weightSum;v/=weightSum;
+       output['spd'+level]=Math.hypot(u,v);
+       output['dir'+level]=(Math.atan2(-u,-v)*180/Math.PI+360)%360;
+     }
+     usedSpatial++;
+     return output;
+   }
+   outer:for(let y=ymin;y<=pixelBounds.max.y+1;y+=stepPx){
+     for(let x=xmin;x<=pixelBounds.max.x+1;x+=stepPx){
+       if(count>=75)break outer;
+       const latlon=map.unproject(L.point(x,y),zoom);
+       if(!map.getBounds().contains(latlon))continue;
+       const winds=gridWindsAt(latlon.lat,latlon.lng);
+       if(!winds){skippedOutside++;continue;}
+       addBarbs(latlon.lat,latlon.lng,winds);
      }
    }
-   $('windGridStatus').textContent='UNIFORM REPRESENTATIVE WINDS • '+count+' map grid points. Same site-profile/manual winds repeated everywhere; NOT individual RAP-grid wind observations. Process a spatial RAP grid for real map variations.';
+   if(actual){
+     $('windGridStatus').textContent='EVENLY SPACED RAP BARB GRID • '+count+' stations at ~'+spacing+' km spacing • K'+$('site').value+' • '+niceTime(actual.valid_time)+' • wind vectors interpolated from nearby actual spatial RAP nodes. Locations outside archived RAP coverage are omitted.';
+   }else{
+     $('windGridStatus').textContent='EVENLY SPACED UNIFORM BARB GRID • '+count+' stations at ~'+spacing+' km spacing. Repeated site/manual winds (NOT independent RAP values).';
+   }
  }
  async function loadSpatialGrid(){
    try{
