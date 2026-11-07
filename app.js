@@ -102,7 +102,22 @@ function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;',
 function calc(){analysis.clearLayers();const line=drawn.getLayers()[0];if(!line){rows=[];$('metricStatus').textContent='Draw a line to begin';$('summary').innerHTML='<div class="empty">Use the polyline tool on the map (upper left), or load the example.</div>';$('tablewrap').innerHTML='';return;}
 try{let o=read(),pts=densify(line.getLatLngs(),Number($('step').value));if(pts.length<3)throw Error('Draw a longer line.');let w0=wind(o.dir0,o.spd0),w1=wind(o.dir1,o.spd1),w3=wind(o.dir3,o.spd3),v03={u:w3.u-w0.u,v:w3.v-w0.v},v01={u:w1.u-w0.u,v:w1.v-w0.v};rows=[];
 for(let i=0;i<pts.length;i++){let a=Math.max(0,i-10),b=Math.min(pts.length-1,i+10),az=bearing(pts[a],pts[b]),n1=(az+90)%360,n2=(az+270)%360,normal=angle(n1,o.motion)<=angle(n2,o.motion)?n1:n2,j=Math.max(0,i-5),k=Math.min(pts.length-1,i+5),arc=0;for(let z=j+1;z<=k;z++)arc+=distance(pts[z-1],pts[z]);let chord=distance(pts[j],pts[k]),tort=chord>0?arc/chord:1,LN=component(v03,normal),LP=Math.abs(component(v01,az)),factor=tort>Number($('tortuosity').value)?2:1,score=LN<=0?0:clamp(LN/10,.5,3)*clamp(LP/8,.5,3)*factor;rows.push({point:pts[i],ahead:dest(pts[i],normal,40),LN,LP,tort,score,normal});}
-let th=Number($('threshold').value);if($('showInflow').checked)for(let i=1;i<rows.length;i++)L.polygon([rows[i-1].point,rows[i].point,rows[i].ahead,rows[i-1].ahead],{stroke:false,fillColor:'#e9c371',fillOpacity:.075,interactive:false}).addTo(analysis);
+let th=Number($('threshold').value);if($('showInflow').checked){
+ const outer=rows.map(r=>r.ahead);
+ // Continuous gold ahead-of-line corridor. This is a conceptual reference
+ // region, NOT the actual RAP sampling footprint or a predicted tornado swath.
+ L.polygon([...rows.map(r=>r.point),...outer.slice().reverse()],
+   {stroke:false,fillColor:'#f2d05e',fillOpacity:.15,interactive:false}).addTo(analysis);
+ L.polyline(outer,{color:'#ffe17a',weight:2.7,opacity:.92,dashArray:'8 5',interactive:false}).addTo(analysis);
+ for(const k of [0,Math.floor((rows.length-1)/2),rows.length-1]){
+   L.polyline([rows[k].point,rows[k].ahead],{color:'#ffe17a',weight:1.4,dashArray:'5 5',opacity:.68,interactive:false}).addTo(analysis);
+ }
+ const center=rows[Math.floor(rows.length/2)].ahead;
+ L.marker(center,{interactive:false,keyboard:false,
+   icon:L.divIcon({className:'inflow-reference-label',
+     html:'40 km ahead · inflow reference',iconSize:[193,22],iconAnchor:[96,11]})
+ }).addTo(analysis);
+}
 if($('showScores').checked)for(let i=1;i<rows.length;i++){let v=(rows[i-1].score+rows[i].score)/2;if(v>=th)L.polyline([rows[i-1].point,rows[i].point],{color:'#39e68b',weight:8,opacity:.9}).bindPopup('Higher relative QTor-inspired index: '+v.toFixed(2)+'<br>Not a tornado probability.').addTo(analysis);}
 let len=rows.slice(1).reduce((v,x,i)=>v+distance(rows[i].point,x.point),0),max=Math.max(...rows.map(x=>x.score)),count=rows.filter(x=>x.score>=th).length;
 $('metricStatus').textContent='Calculated '+new Date().toISOString().slice(11,16)+' UTC';$('summary').innerHTML=[['Line length',len.toFixed(1)+' km'],['Max QTor-inspired score',max.toFixed(2)],['Above display threshold',count+' / '+rows.length],['Max tortuosity',Math.max(...rows.map(x=>x.tort)).toFixed(3)]].map(x=>'<div class="metric"><strong>'+x[1]+'</strong><span>'+x[0]+'</span></div>').join('');
