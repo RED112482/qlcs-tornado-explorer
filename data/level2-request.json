@@ -3,5 +3,6 @@
   "start_utc": "2024-06-04T21:00",
   "end_utc": "2024-06-04T21:35",
   "max_scans": 6,
-  "notes": "Reprocess first sweep Level II with 160 km radius and 2300px resolution"
+  "notes": "Retry high resolution Level II image publish after fixing concurrent git push race",
+  "attempt": 3
 }
