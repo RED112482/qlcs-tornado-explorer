@@ -118,6 +118,11 @@
        L.polygon([prev.point,cur.point,b,a],{stroke:false,fillColor:color,fillOpacity:hot?.23:.12,interactive:false}).addTo(windMarkerLayer);
      }
    }
+   if($('showNormals').checked)for(let i=2;i<rows.length;i+=Math.max(3,Math.round(22/Math.max(1,+$('step').value)))){
+     const p=rows[i].point,q=dest(p,rows[i].normal,11),a=dest(q,(rows[i].normal+150)%360,3),b=dest(q,(rows[i].normal+210)%360,3);
+     L.polyline([p,q],{color:'#ebf1fa',weight:1.6,opacity:.85,interactive:false}).addTo(windMarkerLayer);
+     L.polyline([a,q,b],{color:'#ebf1fa',weight:1.6,opacity:.85,interactive:false}).addTo(windMarkerLayer);
+   }
    if($('showMotion').checked)for(let i=2;i<rows.length;i+=Math.max(3,Math.round(15/Math.max(1,+$('step').value)))){
      const p=rows[i].point,q=dest(p,motion,22);
      L.polyline([p,q],{color:'#ffe06b',weight:2.3,opacity:.95,interactive:false,dashArray:'6 4'}).addTo(windMarkerLayer);
@@ -134,7 +139,7 @@
    }
  }
  calc=function(){baseCalc();advancedDraw();};
- ['showBarbs','showMotion','showFlare'].forEach(id=>$(id).addEventListener('change',advancedDraw));
+ ['showBarbs','showNormals','showMotion','showFlare'].forEach(id=>$(id).addEventListener('change',advancedDraw));
  // RAP import is data provenance; changing a wind input switches to manual override.
  function setWindSource(msg){$('windSource').textContent=msg;}
  function applyRap(profile){
