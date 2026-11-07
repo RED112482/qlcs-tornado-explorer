@@ -50,8 +50,8 @@
  refresh=function(){if(source.value==='level3'){clearLevel2();liveRefresh();}else showLevel2();};
  findScans=async function(){
    if(source.value==='level3')return liveFindScans();
-   const a=Date.parse(($('startUTC').value||'')+':00Z'),b=Date.parse(($('endUTC').value||'')+':00Z');
-   if(!Number.isFinite(a)||!Number.isFinite(b)||b<a){$('scanStatus').textContent='Enter valid UTC start/end.';return;}
+   const a=parseZulu($('startUTC').value),b=parseZulu($('endUTC').value);
+   if(!Number.isFinite(a)||!Number.isFinite(b)||b<=a){$('scanStatus').textContent='Enter YYYY-MM-DDTHH:mmZ for both UTC endpoints.';return;}
    await getManifest();
    scanTimes=[...new Set(level2Frames().filter(f=>normSite(f.site||level2Manifest.site)===normSite($('site').value)&&frameTime(f)>=a&&frameTime(f)<=b).map(f=>f.time))].sort();
    $('scanSlider').disabled=!scanTimes.length;$('scanSlider').max=Math.max(0,scanTimes.length-1);$('scanSlider').value=0;
