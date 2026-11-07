@@ -49,7 +49,7 @@ def main():
     if cycle.tzinfo is None: p.error("Cycle time must contain a UTC offset or Z")
     cycle=cycle.astimezone(dt.timezone.utc).replace(minute=0,second=0,microsecond=0)
     print("Opening RAP f00",cycle.isoformat(),"site",site,flush=True)
-    h=Herbie(cycle,model="rap",product="awp130pgrb",fxx=0,priority=["aws","google","nomads"])
+    h=Herbie(cycle.replace(tzinfo=None),model="rap",product="awp130pgrb",fxx=0,priority=["aws","google","nomads"]) # Herbie expects UTC-naive datetime; output remains explicit Z
     if h.grib is None:raise RuntimeError("Archived RAP F00 GRIB is unavailable for this UTC cycle")
     print("GRIB source",h.grib,flush=True)
     wanted="|".join(str(x) for x in PRESSURES)
