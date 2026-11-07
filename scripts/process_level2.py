@@ -22,6 +22,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.colors import BoundaryNorm, ListedColormap
 import pyart
+from pyproj import Transformer
 
 BUCKET = "unidata-nexrad-level2"
 ROOT = Path(__file__).resolve().parents[1]
@@ -71,22 +72,27 @@ def render(radar, png: Path):
     # Guard against masked, non-finite, or very low returns.
     mask = np.ma.getmaskarray(values) | ~np.isfinite(values.filled(np.nan)) | (values.filled(-999) < 5)
     values = np.ma.masked_where(mask, values)
-    lon_min, lon_max = float(np.nanmin(lons)), float(np.nanmax(lons))
-    lat_min, lat_max = float(np.nanmin(lats)), float(np.nanmax(lats))
-    # Force a square-ish geographic footprint without changing pixel bounds.
-    xpad, ypad = .012, .012
-    bounds = [[lat_min - ypad, lon_min - xpad], [lat_max + ypad, lon_max + xpad]]
+    to_mercator = Transformer.from_crs('EPSG:4326','EPSG:3857',always_xy=True)
+    to_geo = Transformer.from_crs('EPSG:3857','EPSG:4326',always_xy=True)
+    xm, ym = to_mercator.transform(lons,lats)
+    xmin, xmax = float(np.nanmin(xm)), float(np.nanmax(xm))
+    ymin, ymax = float(np.nanmin(ym)), float(np.nanmax(ym))
+    pad = 1800.0  # small 1.8 km margin in projected coordinates
+    xmin -= pad; xmax += pad; ymin -= pad; ymax += pad
+    lon_min, lat_min = to_geo.transform(xmin,ymin)
+    lon_max, lat_max = to_geo.transform(xmax,ymax)
+    bounds = [[lat_min, lon_min], [lat_max, lon_max]]
     size = 10
     fig = plt.figure(figsize=(size, size), dpi=140, facecolor=(0,0,0,0))
     ax = fig.add_axes([0,0,1,1])
-    ax.set_xlim(bounds[0][1], bounds[1][1])
-    ax.set_ylim(bounds[0][0], bounds[1][0])
+    ax.set_xlim(xmin,xmax)
+    ax.set_ylim(ymin,ymax)
     ax.axis("off")
-    # An exact latitude/longitude pcolormesh places native polar gates correctly
-    # on Leaflet. Masked/no-echo pixels are transparent.
+    # Plot native gate centers in EPSG:3857 so Leaflet overlays align precisely;
+    # masked/no-echo pixels remain transparent.
     cmap = CMAP.copy()
     cmap.set_bad((0,0,0,0))
-    ax.pcolormesh(lons, lats, values, cmap=cmap, norm=NORM, shading="nearest",
+    ax.pcolormesh(xm, ym, values, cmap=cmap, norm=NORM, shading="nearest",
                   rasterized=True, antialiased=False)
     png.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(png, transparent=True, facecolor=(0,0,0,0), edgecolor="none",
