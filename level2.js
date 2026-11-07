@@ -5,7 +5,7 @@
  const $=id=>document.getElementById(id);
  const source=$('dataSource'),liveRefresh=refresh,liveFindScans=findScans;
  let level2Manifest=null,level2Overlay=null,windMarkerLayer=L.layerGroup().addTo(map);
- let vectorBoundaries={};let boundarySerial=0,rapProfile=null,rapProfiles=[],manualWindOverride=false;
+ let vectorBoundaries={};let boundarySerial=0,rapProfile=null,rapProfiles=[],manualWindOverride=false,rapProfilesFromRepo=false;
  const frameTime=x=>Date.parse(x.time||x.valid_time||x.timestamp||0);
  const niceTime=x=>x?new Date(x).toISOString().replace('T',' ').slice(0,19)+' UTC':'unknown';
  const normSite=s=>(s||'').toUpperCase().replace(/^K/,'');
@@ -158,7 +158,7 @@
      $(key).value=val;
    }
    rapProfile=profile;manualWindOverride=false;
-   setWindSource('VERIFIED RAP MODEL DATA · K'+normSite(profile.site||$('site').value)+' · '+niceTime(profile.valid_time||profile.time||'')+' · '+(profile.product||'awp130pgrb')+' F'+String(profile.forecast_hour??0).padStart(2,'0')+' · 10 m / 1 km / 3 km AGL · Editable inputs');
+   setWindSource((rapProfilesFromRepo?'NOAA RAP ARCHIVE · ':'USER-IMPORTED RAP JSON (not independently verified) · ')+'K'+normSite(profile.site||$('site').value)+' · '+niceTime(profile.valid_time||profile.time||'')+' · '+(profile.product||'awp130pgrb')+' F'+String(profile.forecast_hour??0).padStart(2,'0')+' · 10 m / 1 km / 3 km AGL · Editable inputs');
    calc();save();
  }
  function matchRap(time){
@@ -176,7 +176,7 @@
      const response=await fetch('./data/rap.json?t='+Date.now(),{cache:'no-store'});
      if(!response.ok)throw Error('No published RAP profile; run Process archived RAP profile in GitHub Actions');
      const data=await response.json();
-     rapProfiles=Array.isArray(data.profiles)?data.profiles:[data];
+     rapProfiles=Array.isArray(data.profiles)?data.profiles:[data];rapProfilesFromRepo=true;
      const site=normSite($('site').value);
      const candidates=rapProfiles.filter(p=>normSite(p.site||'')===site);
      if(!candidates.length)throw Error('No RAP profile found for K'+site+'.');
@@ -194,7 +194,7 @@
  $('rapInput').onchange=async e=>{
    const f=e.target.files?.[0];if(!f)return;
    try{if(f.size>3e6)throw Error('RAP profile file exceeds 3 MB');
-     const data=JSON.parse(await f.text());rapProfiles=Array.isArray(data.profiles)?data.profiles:[data];
+     const data=JSON.parse(await f.text());rapProfiles=Array.isArray(data.profiles)?data.profiles:[data];rapProfilesFromRepo=false;
      if(!rapProfiles.length)throw Error('No wind profiles');
      const match=rapProfiles.find(p=>normSite(p.site||'')===normSite($('site').value));
      if(!match)throw Error('No profile for selected radar '+$('site').value);
@@ -208,7 +208,7 @@
  });
  // Optional RAP profile JSON published by the processing worker.
  fetch('./data/rap.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(data=>{
-   if(data){rapProfiles=Array.isArray(data.profiles)?data.profiles:[data];
+   if(data){rapProfiles=Array.isArray(data.profiles)?data.profiles:[data];rapProfilesFromRepo=true;
      const selected=level2Frames().find(f=>normSite(f.site||level2Manifest?.site)===normSite($('site').value));
      if(selected)matchRap(selected.time);
      else setWindSource('MANUAL WINDS · '+rapProfiles.length+' RAP profile(s) available for matching radar/time');
