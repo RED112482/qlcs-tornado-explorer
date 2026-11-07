@@ -25,6 +25,7 @@
    $('endUTC').value=toZulu(end===24?next:value,end===24?0:end);
    $('archiveWindow').textContent=dayLabel(value)+' • '+String(st).padStart(2,'0')+':00–'+String(end).padStart(2,'0')+':00Z';
    $('archiveWindow').classList.remove('invalid');$('findScans').disabled=false;
+   updateHourCoverage();
    return true;
  }
  async function load(){
@@ -54,6 +55,15 @@
  $('mode').addEventListener('change',()=>{if($('mode').value==='archive')load();});
  $('site').addEventListener('change',()=>{populateAvailableDates();if($('mode').value==='archive')load();});
  $('dataSource').addEventListener('change',()=>{populateAvailableDates();if($('mode').value==='archive')load();});
+ let cachedFrames=[];
+ function updateHourCoverage(){
+   const day=date.value,site="K"+$("site").value;
+   const hours=Array.from({length:24},(_,hour)=>{
+     const count=cachedFrames.filter(f=>f.site===site&&String(f.time).startsWith(day+"T"+String(hour).padStart(2,"0")+":")).length;
+     return {hour,count};
+   }).filter(x=>x.count>0);
+   $("hourCoverage").textContent=hours.length?"Published Level II: "+hours.map(x=>String(x.hour).padStart(2,"0")+"Z ("+x.count+" scans)").join(" • "):"No processed Level II scans yet for this site/date. Use the GitHub Actions link below to process a new UTC window.";
+ }
  async function populateAvailableDates(){
    const selected=$('availableDates'),current=selected.value;
    selected.replaceChildren(new Option('Select a processed date…',''));
@@ -61,6 +71,8 @@
      const response=await fetch('./data/manifest.json?v='+Date.now(),{cache:'no-store'});
      if(!response.ok)return;
      const manifest=await response.json();
+     cachedFrames=Array.isArray(manifest.frames)?manifest.frames:[];
+     updateHourCoverage();
      const site='K'+$('site').value;
      const days=[...new Set((manifest.frames||[]).filter(f=>f.site===site).map(f=>String(f.time).slice(0,10)))].sort().reverse();
      for(const day of days)selected.add(new Option(dayLabel(day),day));
