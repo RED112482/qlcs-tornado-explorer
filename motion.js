@@ -132,6 +132,28 @@
      const cc=dest(b,(side+180)%360,uncertainty),dd=dest(a,(side+180)%360,uncertainty);
      L.polygon([aa,bb,cc,dd],{pane:'forecastPane',stroke:false,fillColor:color,fillOpacity:.075,interactive:false}).addTo(forecast);
    }
+   // Draw intermediate projected positions every 30 minutes for a Warngen-like
+   // timeline of line motion, retaining the same representative score classes.
+   for(let step=0.5;step<hours-.01;step+=0.5){
+     const layerPoints=now.map((p,k)=>geoProject(p,vectors[k],step));
+     for(let k=1;k<layerPoints.length;k++){
+       const val=scoreAt((k-.5)/(layerPoints.length-1));
+       const favorable=val!==null&&val>=threshold;
+       const col=val===null?'#82c4ea':favorable?'#35e58a':'#f17770';
+       L.polyline([layerPoints[k-1],layerPoints[k]],{pane:'forecastPane',color:col,
+         weight:2,opacity:.55,dashArray:'3 7',interactive:false}).addTo(forecast);
+     }
+     const labelPoint=layerPoints[Math.floor(layerPoints.length/2)];
+     L.marker(labelPoint,{pane:'forecastPane',interactive:false,keyboard:false,
+       icon:L.divIcon({className:'motion-hour-label',
+         html:'<span>+'+step.toFixed(1)+'h</span>',iconSize:[48,24],iconAnchor:[0,12]})
+     }).addTo(forecast);
+   }
+   const finalLabel=future[Math.floor(future.length/2)];
+   L.marker(finalLabel,{pane:'forecastPane',interactive:false,keyboard:false,
+     icon:L.divIcon({className:'motion-hour-label final',
+       html:'<span>+'+hours.toFixed(1)+'h</span>',iconSize:[48,24],iconAnchor:[0,12]})
+   }).addTo(forecast);
    const tickEvery=5;
    for(let k=0;k<sampleCount;k+=tickEvery){
      L.polyline([now[k],future[k]],{pane:'forecastPane',color:'#ffe46e',weight:2,opacity:.88,dashArray:'6 5',interactive:false}).addTo(forecast);
