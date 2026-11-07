@@ -74,9 +74,11 @@
    const pos=f*(vectors.length-1),i=Math.min(vectors.length-2,Math.floor(pos));
    const t=Math.max(0,Math.min(1,pos-i));
    const a=vectors[i],b=vectors[i+1];
-   const va=wind(a.dir,a.speed),vb=wind(b.dir,b.speed);
-   const u=va.u*(1-t)+vb.u*t,v=va.v*(1-t)+vb.v*t;
-   return {dir:(Math.atan2(u,v)*180/Math.PI+360)%360,speed:Math.hypot(u,v)/.514444};
+   // These are movement TOWARD vectors, not meteorological wind-FROM inputs.
+   const au=a.speed*Math.sin(rad(a.dir)),av=a.speed*Math.cos(rad(a.dir));
+   const bu=b.speed*Math.sin(rad(b.dir)),bv=b.speed*Math.cos(rad(b.dir));
+   const u=au*(1-t)+bu*t,v=av*(1-t)+bv*t;
+   return {dir:(Math.atan2(u,v)*180/Math.PI+360)%360,speed:Math.hypot(u,v)};
  }
  function geoProject(p,v,hours){return dest(p,v.dir,Math.min(500,v.speed*1.852*hours));}
  function compute(){
