@@ -1,0 +1,61 @@
+name: Process archived RAP profile
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'data/rap-request.json'
+  workflow_dispatch:
+    inputs:
+      site:
+        description: "NEXRAD site for representative RAP environment"
+        required: true
+        default: "KHDC"
+        type: string
+      cycle_utc:
+        description: "RAP F00 analysis hour in UTC e.g. 2024-06-04T21:00Z"
+        required: true
+        default: "2024-06-04T21:00Z"
+        type: string
+permissions:
+  contents: write
+concurrency:
+  group: qlcs-rap-profile
+  cancel-in-progress: false
+jobs:
+  rap-profile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install RAP decoder
+        run: pip install 'numpy>=1.26,<2' 'herbie-data>=2024.3' 'cfgrib>=0.9.10' 'eccodes>=1.7' 'xarray>=2024.1'
+      - name: Resolve RAP cycle
+        id: request
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          SITE: ${{ inputs.site }}
+          CYCLE: ${{ inputs.cycle_utc }}
+        run: |
+          if [ "$EVENT_NAME" = "push" ]; then
+            SITE=$(python -c "import json;print(json.load(open('data/rap-request.json'))['site'])")
+            CYCLE=$(python -c "import json;print(json.load(open('data/rap-request.json'))['cycle_utc'])")
+          fi
+          echo "site=$SITE" >> "$GITHUB_OUTPUT"
+          echo "cycle=$CYCLE" >> "$GITHUB_OUTPUT"
+      - name: Retrieve and validate real RAP profile
+        env:
+          SITE: ${{ steps.request.outputs.site }}
+          CYCLE: ${{ steps.request.outputs.cycle }}
+        run: |
+          python scripts/process_rap.py --site "$SITE" --time "$CYCLE"
+      - name: Publish verified profile
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/rap.json
+          git commit -m "Publish verified RAP F00 wind profile"
+          git pull --rebase origin main
+          git push origin HEAD:main
