@@ -47,11 +47,29 @@
  from.addEventListener('change',load);
  through.addEventListener('change',load);
  $('availableDates').addEventListener('change',()=>{
-   if($('availableDates').value){date.value=$('availableDates').value;load();}
+   if($('availableDates').value){
+     date.value=$('availableDates').value;
+     $('dataSource').value='level2';
+     load();
+   }
  });
  // The original code stores a reference to its original findScans() on the button.
  // Rebind after the Level II viewer overrides findScans, so calendar and button agree.
  $('findScans').onclick=load;
+ $('copyLevel2Request').addEventListener('click',async()=>{
+   if(!sync())return;
+   const selected='site: K'+$('site').value+'\nmode: historical\nstart_utc: '+$('startUTC').value.replace(/Z$/,'')+'\nend_utc: '+$('endUTC').value.replace(/Z$/,'')+'\nmax_scans: 72';
+   try{
+     await navigator.clipboard.writeText(selected);
+     $('copyLevel2Request').textContent='Copied Level II request ✓';
+   }catch(err){
+     // Some browsers deny clipboard access outside a secure context;
+     // show the settings visibly instead of failing silently.
+     $('archiveDataNotice').hidden=false;
+     $('archiveDataNotice').textContent='Copy these workflow inputs: '+selected.replace(/\n/g,' • ');
+     $('copyLevel2Request').textContent='Request values shown below';
+   }
+ });
  $('mode').addEventListener('change',()=>{if($('mode').value==='archive')load();});
  $('site').addEventListener('change',()=>{populateAvailableDates();if($('mode').value==='archive')load();});
  $('dataSource').addEventListener('change',()=>{populateAvailableDates();if($('mode').value==='archive')load();});
