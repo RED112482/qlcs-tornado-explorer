@@ -179,7 +179,7 @@
    const colors={'0':'#d8f2ff','1':'#ffdc79','3':'#d4abff'};
    let count=0;
    function addBarbs(lat,lon,winds){
-     if(!bounds.contains([lat,lon])||count>=100)return;
+     if(!bounds.contains([lat,lon])||count>=400)return;
      const markup=levels.map(level=>{
        const speed=Number(winds['spd'+level]),from=Number(winds['dir'+level]);
        if(!Number.isFinite(speed)||!Number.isFinite(from))return '';
