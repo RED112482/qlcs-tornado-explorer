@@ -56,6 +56,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/rap.json
+          if [ -f data/rap-grid.json ]; then git add data/rap-grid.json; fi
           git commit -m "Publish verified RAP F00 wind profile"
           git pull --rebase origin main
           git push origin HEAD:main
