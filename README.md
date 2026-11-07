@@ -177,3 +177,12 @@ The downstream algorithm no longer projects unbounded individual correspondence 
 The large overlapping per-segment quadrilaterals were replaced with one narrow, **line-normal coherent uncertainty ribbon** surrounding the projected line, visually limited to ±16 km. The uncertainty setting is a presentation parameter, not a statistically verified confidence bound. Intermediate 30-minute lines, yellow motion vectors, and green/red relative-score annotations remain available, with the latter retaining their **current** environmental values under a persistence assumption.
 
 **Limitations:** Two freehand traces do not establish one-to-one tracking of storm features. The motion vectors may reflect growth/decay, line deformation, or manual placement error. Temporal changes in RAP/HRRR environment, storm intensity, and tornado occurrence are not predicted.
+
+
+## v1.0.0 — new-date archive behavior
+
+The GitHub Pages viewer can immediately display only **decoded Level II scans already in** `data/manifest.json`. Changing the date does not itself decode new NEXRAD Level II volumes because the static frontend cannot run Py-ART or use the repository's GitHub Actions write permissions.
+
+For a new UTC date, the viewer now checks the published Level II manifest **first**. If no match is published, it automatically switches and labels the data source as **Iowa Environmental Mesonet Level III single-site base reflectivity**, requests exact archived scan times through the documented `/json/radar.py?operation=list` endpoint, and tries the selected reflectivity product with N0B/N0Q/N0Z fallbacks. Historical Level III remains distinct from genuine native Level II, and neither is invented when a selected time is unavailable. Browser access to IEM is dependent on its live API availability and cross-origin support.
+
+Use **Copy Level II archive request** to copy the current site and selected UTC start/end settings, then **Process genuine Level II on GitHub** to open the manually dispatched decoder workflow. GitHub Pages cannot securely invoke that privileged processing workflow without a separate authenticated server. The site rechecks Level II automatically on subsequent date changes after falling back; the processed-date picker also switches back to Level II.
