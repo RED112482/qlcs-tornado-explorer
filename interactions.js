@@ -43,6 +43,15 @@
   importBtn:'Import a previously exported geographic line so you can compare or edit a case.',
   example:'Draw a built-in demonstration leading edge, not a verified line from the currently displayed radar.',
   clear:'Remove the existing traced line and clear its diagnostic sampling.',
+  captureA:'First draw the candidate UDCZ at the current exact radar scan time, then capture it. The captured line is retained while you move to another scan.',
+  captureB:'Advance to a later radar scan, draw the new line position, then capture it. Corresponding fractional positions between lines estimate local motion and possible expansion.',
+  motionMethod:'Two-frame uses different local displacement vectors along the QLCS; Manual uses a single direction and speed. Both are conditional extrapolations, not tornado forecasts.',
+  motionSpeedKt:'Manual forward speed in knots (1 kt = 1.852 km/h). Only applied when Manual motion is selected.',
+  forecastHours:'How far the captured line is projected downstream in hours. Longer projections become increasingly uncertain, especially if orientation or environment changes.',
+  forecastSpread:'Illustrative positional uncertainty added per hour (km/h). It is a visual sensitivity control, not statistically verified error bounds.',
+  showForecast:'Show colored future line locations and schematic uncertainty envelopes. Green/red transport the CURRENT uncalibrated relative score; no future RAP or real tornado probability is computed.',
+  calculateMotion:'Calculate local movement from two time-separated line drawings, or use your manual direction and speed. Yellow arrows connect the current and projected positions.',
+  resetMotion:'Clear both captured line snapshots and the future projection, without deleting your current editable trace.',
   findScans:'Load any already-published Level II scans within the selected UTC/Zulu window. A different date may first need processing in GitHub Actions.'
  };
  function addHelp(node,message){
@@ -83,6 +92,64 @@
    formula.textContent='Index = clamp(LN 0–3 km ÷ 10 m/s) × clamp(|LP 0–1 km| ÷ 8 m/s) × tortuosity factor. LN < 0 → index 0; each positive shear factor is capped to 0.5–3; tortuosity factor = 1 or 2.';
    science.appendChild(formula);
  }
+
+ // A single body-level tooltip avoids clipping by scrolling sidebars, cards,
+ // legends and maps. Position and flip within the visual viewport.
+ const helpPortal=document.createElement('div');
+ helpPortal.className='help-portal';
+ helpPortal.setAttribute('role','tooltip');
+ helpPortal.setAttribute('aria-hidden','true');
+ document.body.appendChild(helpPortal);
+ let activeTip=null;
+ function positionHelp(anchor){
+   if(!anchor)return;
+   const r=anchor.getBoundingClientRect();
+   const width=Math.min(330,window.innerWidth-28);
+   helpPortal.style.width=width+'px';
+   const height=helpPortal.offsetHeight;
+   const left=Math.max(14,Math.min(window.innerWidth-width-14,r.left+r.width/2-width/2));
+   const below=r.bottom+12;
+   const top=below+height>window.innerHeight-12
+     ?Math.max(12,r.top-height-12):below;
+   helpPortal.style.left=Math.round(left)+'px';
+   helpPortal.style.top=Math.round(top)+'px';
+ }
+ function openHelp(anchor){
+   activeTip=anchor;
+   helpPortal.textContent=anchor.dataset.help||anchor.title||'';
+   if(!helpPortal.textContent)return;
+   helpPortal.classList.add('visible');
+   helpPortal.setAttribute('aria-hidden','false');
+   positionHelp(anchor);
+ }
+ function closeHelp(){
+   activeTip=null;
+   helpPortal.classList.remove('visible');
+   helpPortal.setAttribute('aria-hidden','true');
+ }
+ document.addEventListener('pointerover',e=>{
+   const tip=e.target.closest?.('.help-tip');
+   if(tip)openHelp(tip);
+ });
+ document.addEventListener('pointerout',e=>{
+   const tip=e.target.closest?.('.help-tip');
+   if(tip&&activeTip===tip&&!tip.contains(e.relatedTarget))closeHelp();
+ });
+ document.addEventListener('focusin',e=>{
+   const tip=e.target.closest?.('.help-tip');
+   if(tip)openHelp(tip);
+ });
+ document.addEventListener('focusout',e=>{
+   if(activeTip===e.target)closeHelp();
+ });
+ document.addEventListener('click',e=>{
+   const tip=e.target.closest?.('.help-tip');
+   if(tip){if(activeTip===tip&&helpPortal.classList.contains('visible'))closeHelp();else openHelp(tip);}
+   else if(activeTip)closeHelp();
+ });
+ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeHelp();});
+ window.addEventListener('resize',()=>{if(activeTip)positionHelp(activeTip);});
+ document.querySelector('.sidebar')?.addEventListener('scroll',()=>{if(activeTip)positionHelp(activeTip);},{passive:true});
  let active=false,down=false,points=[],preview=null,last=null;
  const btn=$('freehand');
  function toggle(v){
