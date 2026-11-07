@@ -50,3 +50,13 @@ The app requests images from the official NOAA/NWS **MRMS-based** ArcGIS **radar
 - NOAA MRMS radar service: https://mapservices.weather.noaa.gov/eventdriven/rest/services/radar/radar_base_reflectivity_time/ImageServer
 
 **Disclaimer:** Experimental situational-awareness/training prototype. Do not rely on this output to issue, withhold, or spatially define tornado warnings. Consult authoritative operational data and procedures.
+
+## Version 0.2 — historical single-site radar and boundary layers
+
+The site offers **KMOB, KEVX, KDGX, KHDC, KLIX, KEOX, KVAX, KTLH, KBMX, KJAN** and IEM N0B or N0Q products. Choose **Historical case** and enter a **UTC start/end time (maximum six hours)**, then **Find archived scans**. IEM's metadata API finds the **exact archived scan timestamps**, which are used for TMS radar tiles. Step through scans with slider/arrows or play. An empty archive response does not imply clear weather; coverage varies by site and date.
+
+**Data distinction:** these IEM radar map tiles represent archived **Level III base-reflectivity products**, not native NEXRAD Level II volume scans or the exact 0.5° raw sweep. They are a convenient quick-review overlay, but Level II decoding and sweep selection are a future integration. NOAA/Unidata's [open Level II archive](https://registry.opendata.aws/noaa-nexrad/) is the input for that future processor. The old MRMS service is no longer used.
+
+The basemap now uses OpenStreetMap's standard public tiles (no commercial basemap API key). State, county, and CWA boundaries come from the public [NWS Reference MapServer](https://mapservices.weather.noaa.gov/static/rest/services/nws_reference_maps/nws_reference_map/MapServer) using layer IDs 3, 2, and 1 respectively. These are *current* boundaries even when reviewing past tornado events. Online service availability and public tile usage policies apply.
+
+**Known constraints:** no NEXRAD Level II raw decoding, no radar velocity, no automatic UDCZ/mesovortex detection, and no objective verification. Manually entered winds drive the research-inspired segment score; it is not a tornado probability. This is research/training only.
