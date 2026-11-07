@@ -130,3 +130,14 @@ This writes `data/rap.json`, which the webpage can load, or you can import a pro
 - The public map services and S3 data source can have outages, missing scans, or changes to endpoint formats. An empty radar overlay is not meteorological evidence of no convection.
 
 Data provenance: [Unidata NEXRAD Level II on AWS](https://registry.opendata.aws/noaa-nexrad/), [Py-ART](https://arm-doe.github.io/pyart/), [RAP via Herbie](https://herbie.readthedocs.io/), [NWS reference GIS](https://mapservices.weather.noaa.gov/static/rest/services/nws_reference_maps/nws_reference_map/MapServer).
+
+
+## v0.6 — verified archived RAP and high-detail native Level II
+
+The real **RAP F00** 2024-06-04T21:00Z profile at KHDC was retrieved and published in [data/rap.json](data/rap.json). Model wind **FROM** values: 10 m AGL 163.2° at 11.1 kt; 1 km AGL 169.8° at 18.7 kt; 3 km AGL 248.2° at 21.4 kt. Winds at 1/3 km come from vector interpolation of RAP pressure-level winds using the RAP terrain height. These are site-nearest 13-km model estimates, not a spatially varying 40-km ahead-of-line profile or radar observations.
+
+Use **Load time-matched RAP** in the sidebar, or import a JSON profile. Imported JSON is identified as unverified. Manually changing a wind marks it as a **MANUAL OVERRIDE**. System motion remains user-defined; RAP does not calculate it.
+
+The Level II renderer now requests a 160-km radius and 2300×2300 image to preserve finer-scale native reflectivity gates. Its input is the genuine Unidata NEXRAD Level II raw volume. The browser displays a projected PNG generated from those gates; it does not itself decode AR2V files. Updated images only appear after **Process NEXRAD Level II** completes successfully and commits the image/manifest files.
+
+These research-oriented red/green zones are not calibrated tornado probabilities. The model sampling does not verify actual UDCZ convergence or mesovortex formation.
