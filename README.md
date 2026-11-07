@@ -154,3 +154,16 @@ These research-oriented red/green zones are not calibrated tornado probabilities
 - **Not a UDCZ detector:** the traced reflectivity edge remains a user-selected proxy, and the index is not an operational warning decision tool. Near-storm inflow sampling and spatially varying QTor scores at each drawn line segment require further implementation and validation.
 
 The repo includes [the actual spatial RAP field file](data/rap-grid.json) and [the verified site profile](data/rap.json).
+
+## v0.9.2 — two-frame QLCS propagation and viewport hover help
+
+The experimental **Downstream evolution** panel supports the following workflow:
+1. Select a processed UTC radar scan and draw a candidate leading edge using Freehand or standard Polyline. Click **Capture Scan A**.
+2. Advance the archive slider to a later valid Level II scan, trace the new line location, and click **Capture Scan B**.
+3. The program reorients the traces if needed, interpolates corresponding fractional arc-length positions, and computes displacement, local motion direction **TOWARD** and speed (kt) from the exact UTC interval. This allows different line sections to move in different directions or stretch between scans, but trace-to-trace correspondence is an **approximation**, not motion tracking of distinct radar features.
+4. Choose **Two-frame local vectors** or **Manual direction / forward speed (kt)**, and select 0.5–3 h forecast lead and illustrative uncertainty (km/hour). Yellow dotted lines show movement from the latest line. Intermediate 0.5-hour and final line positions are labeled on the map.
+5. The *current* QTor-inspired relative-score colors (green = relatively larger score; red = smaller score, **not zero risk**) are carried forward assuming steady shape, orientation and environment. The projected colored bands are a **conditional persistence/sensitivity visualization**, NOT a calibrated future tornado probability, detected UDCZ, explicit initiation forecast, or verified area of tornado development. The uncertainty slider is NOT a statistically derived confidence interval.
+
+Because future spatial environmental evolution is not forecast by the current version, RAP fields are not evolved with lead time. Actual future QTor calculations would need time-varying RAP/HRRR gridded winds and convective geometry.
+
+User-interface tooltips now appear in a single screen-positioned body portal so they are not clipped by the scrolling sidebar or other sections. Interface text is now Poppins (webfont if available; Arial fallback).
