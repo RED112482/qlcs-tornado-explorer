@@ -1,0 +1,40 @@
+{
+  "profiles": [
+    {
+      "model": "RAP",
+      "product": "awp130pgrb",
+      "forecast_hour": 0,
+      "cycle": "2024-06-04T21:00:00Z",
+      "valid_time": "2024-06-04T21:00:00Z",
+      "site": "KHDC",
+      "latitude": 30.52,
+      "longitude": -90.42,
+      "terrain_msl_m": 14.6,
+      "winds": {
+        "dir0": 163.2,
+        "spd0": 11.1,
+        "dir1": 169.8,
+        "spd1": 18.7,
+        "dir3": 248.2,
+        "spd3": 21.4
+      },
+      "source": "NOAA RAP F00 13-km pressure-level GRIB2 + 10 m U/V; site-nearest, linearly interpolated to 1 and 3 km AGL",
+      "levels_agl_m": [
+        10.0,
+        72.9,
+        299.6,
+        529.3,
+        763.2,
+        1001.7,
+        1494.1,
+        2009.7,
+        2553.2,
+        3130.4,
+        3742.6,
+        4393.9,
+        5833.7
+      ],
+      "retrieved_utc": "2026-11-07T10:06:08.848827+00:00"
+    }
+  ]
+}
