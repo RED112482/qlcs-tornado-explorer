@@ -16,3 +16,7 @@
 /* v0.4 radar-workstation basemap: muted sea, gray land, no streets */
 #map,.leaflet-container,.leaflet-pane.leaflet-map-pane{background:#24313d!important}
 #radarDirect{display:block;margin-top:8px;padding:9px 10px;border:1px solid #536779;border-radius:7px;color:#92d7f6;text-align:center;overflow-wrap:anywhere}
+
+/* Explicit UTC archive display and source notice */
+#scanStatus,#level2Info{font-size:12px;line-height:1.5}
+#archiveFields label{letter-spacing:.1px}
