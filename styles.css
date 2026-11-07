@@ -85,3 +85,21 @@
 .wind-grid-stack.barb-from-rap{opacity:1}
 .wind-grid-stack.barb-representative{opacity:.35}
 .wind-grid-icon{background:transparent!important;border:0!important;box-shadow:none!important}
+
+/* v0.9 — Poppins throughout and viewport-safe portal tooltips */
+:root,html,body,button,input,select,textarea,table,.tag,.legend,.help-portal,.science-equation,
+.leaflet-container,.leaflet-control,.leaflet-popup-content{font-family:'Poppins',Arial,sans-serif!important}
+.help-tip::after{display:none!important;content:none!important}
+.help-portal{position:fixed;top:0;left:0;z-index:1000000;
+ background:#102b3b;border:1px solid #83c9dc;border-radius:10px;
+ padding:12px 14px;box-shadow:0 12px 36px #000b;color:#ecfaff;
+ font-size:12px;line-height:1.55;overflow-wrap:break-word;pointer-events:none;
+ visibility:hidden;opacity:0;transition:opacity 90ms ease}
+.help-portal.visible{visibility:visible;opacity:1}
+#motionAnalysisSection{border-color:#598395;background:#172e3f}
+#motionCaptureStatus,#motionForecastStatus{line-height:1.6;padding:8px 10px;
+ border:1px solid #415e70;border-radius:7px;background:#112634;margin:10px 0}
+.two-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.two-fields input[type=number]{max-width:100%}
+#motionAnalysisSection .buttons{display:flex;gap:8px;flex-wrap:wrap}
+#motionAnalysisSection .buttons button{flex:1 1 125px}
