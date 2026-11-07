@@ -56,17 +56,35 @@
    showLevel2();
  };
  findScans=async function(){
-   if(source.value==='level3')return liveFindScans();
+   if(source.value==='level3'){return liveFindScans();}
    const a=parseZulu($('startUTC').value),b=parseZulu($('endUTC').value);
    if(!Number.isFinite(a)||!Number.isFinite(b)||b<=a){$('scanStatus').textContent='Enter YYYY-MM-DDTHH:mmZ for both UTC endpoints.';return;}
+   const windowStart=$('startUTC').value,windowEnd=$('endUTC').value,site=$('site').value;
+   $('scanStatus').textContent='Checking processed Level II scans for '+windowStart+'–'+windowEnd+'…';
    await getManifest();
-   scanTimes=[...new Set(level2Frames().filter(f=>normSite(f.site||level2Manifest.site)===normSite($('site').value)&&frameTime(f)>=a&&frameTime(f)<=b).map(f=>f.time))].sort();
+   // Ignore responses for a superseded calendar/site selection.
+   if(windowStart!==$('startUTC').value||windowEnd!==$('endUTC').value||site!==$('site').value)return;
+   scanTimes=[...new Set(level2Frames().filter(f=>normSite(f.site||level2Manifest.site)===normSite(site)&&frameTime(f)>=a&&frameTime(f)<b).map(f=>f.time))].sort();
    $('scanSlider').disabled=!scanTimes.length;$('scanSlider').max=Math.max(0,scanTimes.length-1);$('scanSlider').value=0;
    $('scanLabel').textContent=scanTimes.length?'1/'+scanTimes.length:'0/0';
-   $('scanStatus').textContent=scanTimes.length?scanTimes.length+' genuine Level II scan(s) for K'+$('site').value+' in '+$('startUTC').value+' to '+$('endUTC').value+'.':'No decoded Level II scans published for K'+$('site').value+' during '+$('startUTC').value+' to '+$('endUTC').value+'. Choose a processed date or run the GitHub Actions decoder for this window.';
-   showLevel2();
+   if(scanTimes.length){
+     $('scanStatus').textContent=scanTimes.length+' genuine decoded Level II scan(s) for K'+site+' • '+windowStart+' to '+windowEnd+'.';
+     $('level2Info').textContent='Source: decoded native NEXRAD Level II, already processed and published in this repository.';
+     showLevel2();
+   }else{
+     // GitHub Pages cannot decode remote Level II volumes on a date change.
+     // IEM's archive exposes Level III single-site imagery for arbitrary dates.
+     // Automatically hand off to that independent source rather than blanking.
+     clearLevel2();
+     source.value='level3';
+     $('radarStatus').textContent='No published Level II • trying IEM Level III archive';
+     $('level2Info').textContent='No decoded Level II for K'+site+' at '+windowStart+'–'+windowEnd+'. Automatically searching IEM single-site Level III reflectivity instead. To view genuine Level II for this date, run the GitHub Level II processing workflow (link below).';
+     $('archiveDataNotice').hidden=false;
+     $('archiveDataNotice').textContent='Level II not published for this UTC window — using Level III archived radar if available. Level II processing must be requested separately.';
+     await liveFindScans();
+   }
  };
- source.addEventListener('change',async()=>{stopPlay();if(source.value==='level2')await getManifest();refresh();});
+ source.addEventListener('change',async()=>{stopPlay();if($('mode').value==='archive')return findScans();if(source.value==='level2')await getManifest();refresh();});
  const originalOpacity=$('radarOpacity').oninput;
  $('radarOpacity').oninput=()=>{if(source.value==='level2'&&level2Overlay)level2Overlay.setOpacity(+$('radarOpacity').value/100);else originalOpacity?.();};
  // The NOAA ArcGIS reference service returns geometries with no rendered labels.
