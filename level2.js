@@ -5,7 +5,7 @@
  const $=id=>document.getElementById(id);
  const source=$('dataSource'),liveRefresh=refresh,liveFindScans=findScans;
  let level2Manifest=null,level2Overlay=null,windMarkerLayer=L.layerGroup().addTo(map);
- let vectorBoundaries={};let boundarySerial=0,rapProfile=null,rapProfiles=[];
+ let vectorBoundaries={};let boundarySerial=0,rapProfile=null,rapProfiles=[],manualWindOverride=false;
  const frameTime=x=>Date.parse(x.time||x.valid_time||x.timestamp||0);
  const niceTime=x=>x?new Date(x).toISOString().replace('T',' ').slice(0,19)+' UTC':'unknown';
  const normSite=s=>(s||'').toUpperCase().replace(/^K/,'');
@@ -43,7 +43,7 @@
    level2Overlay.once('error',()=>{$('radarStatus').textContent='Level II image missing';$('level2Info').textContent='Manifest exists but radar image failed: '+frame.url;});
    $('radarStatus').textContent='Loading Level II sweep';
    $('radarTime').textContent='K'+normSite(frame.site||level2Manifest.site)+' • '+niceTime(frame.time)+' • '+Number(frame.elevation_deg||0).toFixed(2)+'° '+(frame.field||'reflectivity');
-   $('level2Info').textContent='Actual decoded Level II scan • '+(frame.source||'Unidata NEXRAD Level II')+' • native gates rasterized for map display. Timestamp and beam elevation shown above.';
+   $('level2Info').textContent='Actual decoded Level II sweep • '+(frame.source||'Unidata NEXRAD Level II')+' • '+(frame.render_radius_km||'full')+' km radius • '+(frame.image_pixels||'legacy')+' px raster • '+(frame.elevation_deg??'?')+'° • UTC/Zulu.';
    $('radarDirect').href=frame.url;$('radarDirect').textContent='Open decoded Level II image';
    matchRap(frame.time);
  }
@@ -150,35 +150,49 @@
  // RAP import is data provenance; changing a wind input switches to manual override.
  function setWindSource(msg){$('windSource').textContent=msg;}
  function applyRap(profile){
+   const profileSite=normSite(profile.site||'');
+   if(profileSite&&profileSite!==normSite($('site').value))throw Error('RAP profile is for K'+profileSite+', selected radar is K'+$('site').value);
    const w=profile.winds||profile;
    for(const key of ['dir0','spd0','dir1','spd1','dir3','spd3']){
      const val=Number(w[key]);if(!Number.isFinite(val))throw Error('RAP profile missing '+key);
      $(key).value=val;
    }
-   rapProfile=profile;
-   setWindSource('RAP-DERIVED · '+niceTime(profile.valid_time||profile.time||'')+' · '+(profile.model||'RAP')+' '+(profile.cycle||'')+' • User-editable');
+   rapProfile=profile;manualWindOverride=false;
+   setWindSource('VERIFIED RAP MODEL DATA · K'+normSite(profile.site||$('site').value)+' · '+niceTime(profile.valid_time||profile.time||'')+' · '+(profile.product||'awp130pgrb')+' F'+String(profile.forecast_hour??0).padStart(2,'0')+' · 10 m / 1 km / 3 km AGL · Editable inputs');
    calc();save();
  }
  function matchRap(time){
    if(!rapProfiles.length)return;
-   const target=Date.parse(time||''),match=rapProfiles.map(p=>({p,d:Math.abs(Date.parse(p.valid_time||p.time||'')-target)})).sort((a,b)=>a.d-b.d)[0];
-   if(match&&match.d<=90*60000)try{applyRap(match.p);}catch(e){console.warn(e);}
+   if(manualWindOverride)return;
+   const target=Date.parse(time||'');
+   const candidates=rapProfiles.filter(p=>normSite(p.site||'')===normSite($('site').value));
+   const match=candidates.map(p=>({p,d:Math.abs(Date.parse(p.valid_time||p.time||'')-target)})).sort((a,b)=>a.d-b.d)[0];
+   if(match&&match.d<=60*60000)try{applyRap(match.p);}catch(e){console.warn(e);}
+   else if(candidates.length)setWindSource('MANUAL VALUES · No matching RAP cycle within 60 minutes of this radar scan');
  }
  $('loadRap').onclick=()=>$('rapInput').click();
  $('rapInput').onchange=async e=>{
    const f=e.target.files?.[0];if(!f)return;
    try{if(f.size>3e6)throw Error('RAP profile file exceeds 3 MB');
      const data=JSON.parse(await f.text());rapProfiles=Array.isArray(data.profiles)?data.profiles:[data];
-     if(!rapProfiles.length)throw Error('No wind profiles');applyRap(rapProfiles[0]);
+     if(!rapProfiles.length)throw Error('No wind profiles');
+     const match=rapProfiles.find(p=>normSite(p.site||'')===normSite($('site').value));
+     if(!match)throw Error('No profile for selected radar '+$('site').value);
+     applyRap(match);
    }catch(err){setWindSource('RAP load error: '+err.message);}
    e.target.value='';
  };
  for(const k of ['dir0','spd0','dir1','spd1','dir3','spd3'])$(k).addEventListener('change',()=>{
-   setWindSource('MANUAL OVERRIDE · '+k+' edited • RAP no longer fully represents active inputs');
+   manualWindOverride=true;
+   setWindSource('MANUAL OVERRIDE · '+k+' edited • active wind profile is not fully RAP-derived');
  });
  // Optional RAP profile JSON published by the processing worker.
  fetch('./data/rap.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(data=>{
-   if(data){rapProfiles=Array.isArray(data.profiles)?data.profiles:[data];if(rapProfiles.length)applyRap(rapProfiles[0]);}
+   if(data){rapProfiles=Array.isArray(data.profiles)?data.profiles:[data];
+     const selected=level2Frames().find(f=>normSite(f.site||level2Manifest?.site)===normSite($('site').value));
+     if(selected)matchRap(selected.time);
+     else setWindSource('MANUAL WINDS · '+rapProfiles.length+' RAP profile(s) available for matching radar/time');
+   }
  }).catch(()=>{});
  getManifest().then(async m=>{
    const count=(m.frames||[]).length;
