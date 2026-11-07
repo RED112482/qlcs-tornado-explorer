@@ -32,6 +32,85 @@ def sample_dataarray(da,iy,ix):
         elif "heightAboveGround" in point.coords:level=float(point.heightAboveGround)
         else:level=0
     return [(float(level),float(point))]
+
+def write_rap_spatial_grid(groups,site,cycle,origin_lat,origin_lon):
+    """Construct a small actual RAP vector grid, never by repeating one site wind.
+
+    Sample each target at the closest native RAP 13-km model point, interpolate
+    10-m/pressure-level U/V to 1 and 3 km AGL with its own model terrain.
+    """
+    prepared=[]
+    for ds in groups:
+        if ds is None or "latitude" not in ds or "longitude" not in ds:continue
+        a=np.asarray(ds.latitude);b=(np.asarray(ds.longitude)+180)%360-180
+        if a.ndim!=2 or b.shape!=a.shape:continue
+        region=np.where((np.abs(a-origin_lat)<=1.8)&(np.abs(b-origin_lon)<=2.2))
+        if not len(region[0]):continue
+        prepared.append((ds,region[0],region[1],a[region],b[region]))
+    if not prepared:
+        print("RAP grid generation skipped: model latitude/longitude missing",flush=True)
+        return
+    points=[]
+    spacing=25.0
+    for row in range(-5,6):
+        target_lat=origin_lat+row*spacing/111.2
+        for col in range(-5,6):
+            target_lon=origin_lon+col*spacing/(111.2*math.cos(math.radians(origin_lat)))
+            terrain=None;surf={};layers={}
+            grid_lat=grid_lon=None
+            for ds,ys,xs,lats,lons in prepared:
+                distance=(lats-target_lat)**2+((lons-target_lon)*math.cos(math.radians(target_lat)))**2
+                idx=int(np.nanargmin(distance));iy=int(ys[idx]);ix=int(xs[idx])
+                if grid_lat is None:grid_lat=float(lats[idx]);grid_lon=float(lons[idx])
+                for name,da in ds.data_vars.items():
+                    short=str(da.attrs.get("GRIB_shortName",name)).lower()
+                    typ=str(da.attrs.get("GRIB_typeOfLevel",""))
+                    if short in ("u","u10") or name=="u10":component="u"
+                    elif short in ("v","v10") or name=="v10":component="v"
+                    elif short in ("gh","orog","z") or name in ("gh","orog"):component="z"
+                    else:continue
+                    if typ=="surface" and component=="z":
+                        vals=sample_dataarray(da,iy,ix)
+                        if vals:terrain=vals[0][1]
+                    elif typ=="heightAboveGround" or name in ("u10","v10"):
+                        for height,value in sample_dataarray(da,iy,ix):
+                            if abs(height-10)<.5 and component in ("u","v"):surf[component]=value
+                    elif typ=="isobaricInhPa" or "isobaricInhPa" in da.dims or "isobaricInhPa" in da.coords:
+                        for pressure,value in sample_dataarray(da,iy,ix):
+                            if pressure in PRESSURES and np.isfinite(value):
+                                layers.setdefault(pressure,{})[component]=value
+            if terrain is None or not np.isfinite(terrain) or not all(x in surf for x in ("u","v")):continue
+            profile=[(10.,surf["u"],surf["v"])]
+            for values in layers.values():
+                if all(k in values for k in ("u","v","z")):
+                    height=values["z"]-terrain
+                    if height>10 and np.isfinite(height):
+                        profile.append((float(height),values["u"],values["v"]))
+            profile.sort()
+            if len(profile)<3 or profile[-1][0]<3000:continue
+            z=np.array([a for a,_,_ in profile])
+            if np.any(np.diff(z)<=0):continue
+            u=np.array([u for _,u,_ in profile]);v=np.array([v for _,_,v in profile])
+            winds={}
+            for level,height in (("0",10),("1",1000),("3",3000)):
+                direction,speed=vector(float(np.interp(height,z,u)),float(np.interp(height,z,v)))
+                winds["dir"+level]=direction;winds["spd"+level]=speed
+            points.append(dict(row=row+5,col=col+5,lat=round(grid_lat,5),lon=round(grid_lon,5),winds=winds))
+    if len(points)<20:
+        print("RAP grid generation skipped: only",len(points),"valid model grid locations",flush=True)
+        return
+    timestamp=cycle.isoformat().replace("+00:00","Z")
+    path=ROOT/"data"/"rap-grid.json"
+    previous=json.loads(path.read_text()) if path.exists() else {"grids":[]}
+    entry=dict(site=site,valid_time=timestamp,model="RAP",product="awp130pgrb",
+               source="NOAA RAP F00 13-km GRIB2; nearest native model locations; independent local U/V vertical profiles interpolated to 1/3 km AGL",
+               nominal_spacing_km=25,points=points)
+    entries={(x.get("site"),x.get("valid_time")):x for x in previous.get("grids",[])}
+    entries[(site,timestamp)]=entry
+    path.parent.mkdir(exist_ok=True)
+    path.write_text(json.dumps({"grids":sorted(entries.values(),key=lambda x:x["valid_time"])[-12:]},indent=2)+"\\n")
+    print("Published actual RAP spatial wind grid with",len(points),"locations at",timestamp,flush=True)
+
 def main():
     p=argparse.ArgumentParser()
     p.add_argument("--site",default="KHDC")
@@ -118,4 +197,8 @@ def main():
     existing[(site,stamp)]=result
     out.write_text(json.dumps({"profiles":sorted(existing.values(),key=lambda x:x["valid_time"])[-150:]},indent=2)+"\n")
     print("Saved verified RAP profile",json.dumps(result,indent=2),flush=True)
+    try:
+        write_rap_spatial_grid(groups,site,cycle,lat,lon)
+    except Exception as err:
+        print("Optional spatial RAP grid failed; verified site RAP profile was kept:",repr(err),flush=True)
 if __name__=="__main__":main()
