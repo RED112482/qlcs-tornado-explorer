@@ -23,7 +23,7 @@
    const site=normSite($('site').value);
    let candidates=level2Frames().filter(f=>normSite(f.site||level2Manifest.site)===site);
    if($('mode').value==='archive'){
-     const ts=scanTimes[+$('scanSlider').value];return candidates.find(f=>f.time===ts)||null;
+     const ts=scanTimes[+$('scanSlider').value];return ts?candidates.find(f=>f.time===ts)||null:null;
    }
    return candidates.sort((a,b)=>frameTime(b)-frameTime(a))[0]||null;
  }
@@ -35,7 +35,7 @@
    if(!frame||!Array.isArray(frame.bounds)){
      $('radarStatus').textContent='Level II: no processed scan';
      $('radarTime').textContent='No decoded Level II scan published for K'+$('site').value;
-     $('level2Info').textContent='No processed Level II frame found for this site/mode. Run Actions → Process NEXRAD Level II, or switch to Level III fallback.';
+     $('level2Info').textContent='No processed Level II data for this radar and selected UTC date. The calendar can select any date, but Level II archives must first be decoded through GitHub Actions → Process NEXRAD Level II. Select a processed date above to restore radar.';
      return;
    }
    level2Overlay=L.imageOverlay(frame.url,frame.bounds,{pane:'radarPane',opacity:Number($('radarOpacity').value)/100,interactive:false,crossOrigin:true}).addTo(map);
@@ -63,7 +63,7 @@
    scanTimes=[...new Set(level2Frames().filter(f=>normSite(f.site||level2Manifest.site)===normSite($('site').value)&&frameTime(f)>=a&&frameTime(f)<=b).map(f=>f.time))].sort();
    $('scanSlider').disabled=!scanTimes.length;$('scanSlider').max=Math.max(0,scanTimes.length-1);$('scanSlider').value=0;
    $('scanLabel').textContent=scanTimes.length?'1/'+scanTimes.length:'0/0';
-   $('scanStatus').textContent=scanTimes.length?scanTimes.length+' processed Level II volume(s).':'No decoded sweeps for this period. Run the Actions radar processor for this UTC window.';
+   $('scanStatus').textContent=scanTimes.length?scanTimes.length+' genuine Level II scan(s) for K'+$('site').value+' in '+$('startUTC').value+' to '+$('endUTC').value+'.':'No decoded Level II scans published for K'+$('site').value+' during '+$('startUTC').value+' to '+$('endUTC').value+'. Choose a processed date or run the GitHub Actions decoder for this window.';
    showLevel2();
  };
  source.addEventListener('change',async()=>{stopPlay();if(source.value==='level2')await getManifest();refresh();});
@@ -220,7 +220,7 @@
      const demo=m.frames.find(f=>normSite(f.site)==='HDC'&&f.time.startsWith('2024-06-04T21:'));
      if(demo){
        source.value='level2';$('site').value='HDC';$('mode').value='archive';$('archiveFields').hidden=false;
-       $('startUTC').value='2024-06-04T21:00Z';$('endUTC').value='2024-06-04T21:35Z';
+       $('startUTC').value='2024-06-04T21:00Z';$('endUTC').value='2024-06-04T22:00Z';
        map.setView(sites.HDC,9);
        await findScans();
        $('scanStatus').textContent=scanTimes.length+' decoded KHDC Level II scans loaded. Change mode to Latest for live radar; all timestamps shown are UTC/Zulu.';
