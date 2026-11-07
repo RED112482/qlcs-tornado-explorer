@@ -216,22 +216,18 @@
  }).catch(()=>{});
  getManifest().then(async m=>{
    const count=(m.frames||[]).length;
-   if(count){
-     const demo=m.frames.find(f=>normSite(f.site)==='HDC'&&f.time.startsWith('2024-06-04T21:'));
-     if(demo){
-       source.value='level2';$('site').value='HDC';$('mode').value='archive';$('archiveFields').hidden=false;
-       $('startUTC').value='2024-06-04T21:00Z';$('endUTC').value='2024-06-04T22:00Z';
-       map.setView(sites.HDC,9);
-       await findScans();
-       $('scanStatus').textContent=scanTimes.length+' decoded KHDC Level II scans loaded. Change mode to Latest for live radar; all timestamps shown are UTC/Zulu.';
-       calc();return;
-     }
-   }
-   if(!count){
+   if(!count&&source.value==='level2'){
      source.value='level3';
-     $('level2Info').textContent='Level II has 0 processed frames. Showing the independent high-resolution IEM radar feed until decoded Level II scans are published.';
-     $('scanStatus').textContent='Live radar: latest IEM scan; archives: all times in UTC/Zulu.';
+     $('level2Info').textContent='No decoded Level II frames have been published. Showing the IEM radar feed until processing is available.';
    }
-   refresh();calc();
+   if(source.value==='level2'&&$('mode').value==='archive'){
+     map.setView(sites[$('site').value],9);
+     await findScans();
+   }else if(source.value==='level3'&&$('mode').value==='archive'){
+     await findScans();
+   }else{
+     refresh();
+   }
+   calc();
  });
 })();
