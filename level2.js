@@ -170,6 +170,26 @@
    if(match&&match.d<=60*60000)try{applyRap(match.p);}catch(e){console.warn(e);}
    else if(candidates.length)setWindSource('MANUAL VALUES · No matching RAP cycle within 60 minutes of this radar scan');
  }
+ async function fetchRapFromRepo(){
+   $('windSource').textContent='Looking up processed NOAA RAP profile for radar site and UTC scan…';
+   try{
+     const response=await fetch('./data/rap.json?t='+Date.now(),{cache:'no-store'});
+     if(!response.ok)throw Error('No published RAP profile; run Process archived RAP profile in GitHub Actions');
+     const data=await response.json();
+     rapProfiles=Array.isArray(data.profiles)?data.profiles:[data];
+     const site=normSite($('site').value);
+     const candidates=rapProfiles.filter(p=>normSite(p.site||'')===site);
+     if(!candidates.length)throw Error('No RAP profile found for K'+site+'.');
+     const current=source.value==='level2'&&scanTimes.length?scanTimes[+$('scanSlider').value]:null;
+     const target=Date.parse(current||'');
+     let match=candidates.map(p=>({p,delta:Number.isFinite(target)?Math.abs(Date.parse(p.valid_time||p.time)-target):Infinity})).sort((a,b)=>a.delta-b.delta)[0];
+     if(current&&match.delta>3600000)throw Error('Nearest RAP profile for K'+site+' is >60 min from radar scan '+current);
+     if(!current)match=candidates.sort((a,b)=>Date.parse(b.valid_time)-Date.parse(a.valid_time)).map(p=>({p}))[0];
+     manualWindOverride=false;
+     applyRap(match.p);
+   }catch(error){$('windSource').textContent='RAP not applied: '+error.message;}
+ }
+ $('fetchRap').onclick=fetchRapFromRepo;
  $('loadRap').onclick=()=>$('rapInput').click();
  $('rapInput').onchange=async e=>{
    const f=e.target.files?.[0];if(!f)return;
