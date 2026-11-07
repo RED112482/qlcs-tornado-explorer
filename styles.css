@@ -24,3 +24,15 @@
 /* Explicit model provenance, independent of editable wind controls */
 .source-status{border:1px solid #55778b;border-left:4px solid #70d0e1;border-radius:7px;padding:9px 10px;margin:10px 0;background:#172c38;color:#e4f3f7;font-size:12px;line-height:1.55}
 #fetchRap{flex:1 1 150px}#loadRap{flex:1 1 120px}
+
+/* v0.7: UTC calendar navigation, no free-form local-time parsing */
+.sidebar input[type="date"]{width:100%;min-width:0;background:#192b3c;color:#ecf6ff;border:1px solid #536779;border-radius:8px;padding:9px;font:inherit;color-scheme:dark}
+.calendar-row{display:grid;grid-template-columns:40px minmax(0,1fr) 40px;gap:7px;align-items:center}
+.sidebar .calendar-step{min-width:0;padding:9px 4px;text-align:center;align-self:stretch}
+.utc-hours{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin:8px 0}
+.utc-hours .field{min-width:0}
+.utc-hours select{width:100%}
+.archive-window{background:#203547;color:#d1eefa;border:1px solid #476c84;border-radius:8px;padding:9px 11px;margin:8px 0;font-size:12px;font-weight:650}
+.archive-window.invalid{border-color:#cb756f;color:#ffd5d0}
+#availableDates{width:100%}
+#archiveFields .field label{display:block;margin:0 0 6px}
