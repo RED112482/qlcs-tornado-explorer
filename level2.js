@@ -45,7 +45,7 @@
    $('radarTime').textContent='K'+normSite(frame.site||level2Manifest.site)+' • '+niceTime(frame.time)+' • '+Number(frame.elevation_deg||0).toFixed(2)+'° '+(frame.field||'reflectivity');
    $('level2Info').textContent='Actual decoded Level II sweep • '+(frame.source||'Unidata NEXRAD Level II')+' • '+(frame.render_radius_km||'full')+' km radius • '+(frame.image_pixels||'legacy')+' px raster • '+(frame.elevation_deg??'?')+'° • UTC/Zulu.';
    $('radarDirect').href=frame.url;$('radarDirect').textContent='Open decoded Level II image';
-   matchRap(frame.time);
+   matchRap(frame.time);renderBarbGrid();
  }
  refresh=function(){
    if(source.value==='level3'){clearLevel2();liveRefresh();return;}
@@ -137,46 +137,79 @@
      L.polyline([a,q,b],{color:'#ffe06b',weight:2.3,opacity:.95,interactive:false}).addTo(windMarkerLayer);
    }
  }
- // A regular latitude/longitude-derived ground-distance grid. Since we only
- // ingest a single representative RAP wind profile, these are REPEATED site winds:
- // their identical direction/speed at each point must NOT be mistaken for a model grid.
+ // Use *spatial* RAP profiles whenever site, UTC time and no manual override match.
+ // Fall back to explicitly labeled repeated site winds only if grid data are absent.
  map.createPane('windGridPane');map.getPane('windGridPane').style.zIndex=460;
  map.getPane('windGridPane').style.pointerEvents='none';
  const barbGrid=L.layerGroup().addTo(map);
+ let spatialGrids=[];
+ function findSpatialGrid(){
+   if(manualWindOverride)return null;
+   const site='K'+$('site').value;
+   const selected=scanTimes.length?scanTimes[Number($('scanSlider').value)]:null;
+   const target=Date.parse(selected||($('mode').value==='archive'?$('startUTC').value:new Date().toISOString()));
+   return spatialGrids.filter(g=>g.site===site&&Math.abs(Date.parse(g.valid_time)-target)<=3600000)
+      .sort((a,b)=>Math.abs(Date.parse(a.valid_time)-target)-Math.abs(Date.parse(b.valid_time)-target))[0]||null;
+ }
  function renderBarbGrid(){
    barbGrid.clearLayers();
-   if(!$('showBarbs').checked)return;
+   if(!$('showBarbs').checked){$('windGridStatus').textContent='Wind barb grid hidden.';return;}
    const chosen=$('barbLevels').value,spacing=Math.max(25,Number($('barbSpacing').value)||55);
    $('barbSpacingValue').textContent=String(spacing);
-   const bounds=map.getBounds();
-   if(!bounds.isValid())return;
+   const bounds=map.getBounds();if(!bounds.isValid())return;
+   const levels=chosen==='all'?['0','1','3']:[chosen];
+   const colors={'0':'#d8f2ff','1':'#ffdc79','3':'#d4abff'};
+   let count=0;
+   function addBarbs(lat,lon,winds){
+     if(!bounds.contains([lat,lon])||count>=100)return;
+     const markup=levels.map(level=>{
+       const speed=Number(winds['spd'+level]),from=Number(winds['dir'+level]);
+       if(!Number.isFinite(speed)||!Number.isFinite(from))return '';
+       const svg=pennantBarb(speed,from,colors[level]);
+       const label=level==='0'?'10m':level+'km';
+       return '<div class="barb-unit">'+svg+'<small>'+label+'</small></div>';
+     }).join('');
+     if(!markup)return;
+     const html='<div class="barb-cluster '+(levels.length===3?'barb-triplet':'')+'">'+markup+'</div>';
+     const width=levels.length===3?114:45;
+     L.marker([lat,lon],{pane:'windGridPane',interactive:false,keyboard:false,
+       icon:L.divIcon({className:'wind-grid-icon',html,iconSize:[width,65],
+       iconAnchor:[width/2,33]})}).addTo(barbGrid);
+     count++;
+   }
+   const actual=findSpatialGrid();
+   if(actual&&Array.isArray(actual.points)&&actual.points.length){
+     const thinning=Math.max(1,Math.round(spacing/Number(actual.nominal_spacing_km||25)));
+     for(const point of actual.points){
+       if(point.row%thinning||point.col%thinning)continue;
+       addBarbs(point.lat,point.lon,point.winds||{});
+     }
+     $('windGridStatus').textContent='ACTUAL SPATIAL RAP • K'+$('site').value+' • '+niceTime(actual.valid_time)+' • '+count+' displayed grid nodes • independent local 10-m/1-/3-km AGL RAP winds (native model points; nominal sampling ~'+(thinning*(actual.nominal_spacing_km||25))+' km).';
+     return;
+   }
    const south=Math.max(-85,bounds.getSouth()),north=Math.min(85,bounds.getNorth()),
          west=Math.max(-180,bounds.getWest()),east=Math.min(180,bounds.getEast());
    const midLat=(south+north)/2,latStep=spacing/111.2,
          lonStep=spacing/(111.2*Math.max(.22,Math.cos(midLat*Math.PI/180)));
-   const maxGrid=75;
-   const levels=chosen==='all'?['0','1','3']:[chosen];
-   const colors={'0':'#d8f2ff','1':'#ffdc79','3':'#d4abff'};
-   let count=0;
-   for(let lat=Math.ceil(south/latStep)*latStep;lat<=north&&count<maxGrid;lat+=latStep){
-     for(let lon=Math.ceil(west/lonStep)*lonStep;lon<=east&&count<maxGrid;lon+=lonStep){
-       // 60px full-size barbs are legible at the default 55 km spacing;
-       // each level uses the same geolocation, horizontally grouped in a cell.
-       const markup=levels.map(level=>{
-         const speed=Number($('spd'+level).value),from=Number($('dir'+level).value);
-         const svg=pennantBarb(speed,from,colors[level]);
-         const lbl=level==='0'?'10m':level+'km';
-         return '<div class="barb-unit" title="'+lbl+' AGL wind FROM '+from+'° at '+speed+' kt">'+svg+'<small>'+lbl+'</small></div>';
-       }).join('');
-       const html='<div class="barb-cluster '+(levels.length===3?'barb-triplet':'')+'">'+markup+'</div>';
-       const width=levels.length===3?114:45;
-       L.marker([lat,lon],{pane:'windGridPane',interactive:false,keyboard:false,
-         icon:L.divIcon({className:'wind-grid-icon',html,iconSize:[width,65],
-         iconAnchor:[width/2,33]})}).addTo(barbGrid);
-       count++;
+   const winds={};
+   for(const level of ['0','1','3']){winds['dir'+level]=Number($('dir'+level).value);winds['spd'+level]=Number($('spd'+level).value);}
+   for(let lat=Math.ceil(south/latStep)*latStep;lat<=north&&count<75;lat+=latStep){
+     for(let lon=Math.ceil(west/lonStep)*lonStep;lon<=east&&count<75;lon+=lonStep){
+       addBarbs(lat,lon,winds);
      }
    }
+   $('windGridStatus').textContent='UNIFORM REPRESENTATIVE WINDS • '+count+' map grid points. Same site-profile/manual winds repeated everywhere; NOT individual RAP-grid wind observations. Process a spatial RAP grid for real map variations.';
  }
+ async function loadSpatialGrid(){
+   try{
+     const r=await fetch('./data/rap-grid.json?bust='+Date.now(),{cache:'no-store'});
+     if(!r.ok)throw Error('Grid not published');
+     const d=await r.json();
+     spatialGrids=Array.isArray(d.grids)?d.grids:[];
+   }catch(e){spatialGrids=[];}
+   renderBarbGrid();
+ }
+ loadSpatialGrid();
  calc=function(){baseCalc();advancedDraw();renderBarbGrid();};
  ['showNormals','showMotion','showFlare'].forEach(id=>$(id).addEventListener('change',advancedDraw));
  ['showBarbs','barbLevels','barbSpacing'].forEach(id=>$(id).addEventListener('input',renderBarbGrid));
