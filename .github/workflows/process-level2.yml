@@ -1,0 +1,94 @@
+name: Process NEXRAD Level II
+on:
+  workflow_dispatch:
+    inputs:
+      site:
+        description: "Radar site (KMOB, KHDC, KEVX, ...)"
+        required: true
+        default: "KMOB"
+        type: string
+      mode:
+        description: "Most recent scans, or historical UTC time window"
+        required: true
+        default: "historical"
+        type: choice
+        options:
+          - historical
+          - latest
+      start_utc:
+        description: "UTC start e.g. 2024-06-04T21:00"
+        required: false
+        default: "2024-06-04T21:00"
+        type: string
+      end_utc:
+        description: "UTC end e.g. 2024-06-04T22:00 (max 6h)"
+        required: false
+        default: "2024-06-04T22:00"
+        type: string
+      max_scans:
+        description: "Number of Level II volumes (1-24)"
+        default: "6"
+        required: true
+        type: string
+      rap_profile:
+        description: "Attempt optional RAP f00 wind-profile calculation"
+        default: false
+        type: boolean
+permissions:
+  contents: write
+concurrency:
+  group: nexrad-level2-data
+  cancel-in-progress: false
+jobs:
+  radar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: "requirements-radar.txt"
+      - run: pip install -r requirements-radar.txt
+      - name: Decode real Level II scans
+        env:
+          SITE: ${{ inputs.site }}
+          MODE: ${{ inputs.mode }}
+          START: ${{ inputs.start_utc }}
+          END: ${{ inputs.end_utc }}
+          LIMIT: ${{ inputs.max_scans }}
+        run: |
+          if [ "$MODE" = "latest" ]; then
+            python scripts/process_level2.py --site "$SITE" --latest --max-files "$LIMIT"
+          else
+            python scripts/process_level2.py --site "$SITE" --start "$START" --end "$END" --max-files "$LIMIT"
+          fi
+      - name: Optional RAP vertical profile
+        if: inputs.rap_profile
+        continue-on-error: true
+        env:
+          SITE: ${{ inputs.site }}
+          MODE: ${{ inputs.mode }}
+          START: ${{ inputs.start_utc }}
+        run: |
+          if [ "$MODE" = "latest" ]; then
+            WHEN=$(date -u '+%Y-%m-%dT%H:00')
+          else
+            WHEN="$START"
+          fi
+          python scripts/process_rap.py --site "$SITE" --time "$WHEN"
+      - name: Publish generated radar and RAP to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/
+          if git diff --staged --quiet; then
+            echo "Nothing to publish"
+          else
+            git commit -m "Publish Level II radar frames and optional RAP winds"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
