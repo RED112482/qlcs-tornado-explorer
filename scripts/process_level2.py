@@ -59,7 +59,7 @@ def list_scans(client, site, start, end):
                     objects.append((stamp, key))
     return sorted(objects)
 
-def render(radar, png: Path):
+def render(radar, png: Path, max_range_km: float=160, image_size_px: int=2300):
     # First (lowest) elevation sweep; the actual mean angle is recorded.
     sweep = 0
     first, last = radar.get_start_end(sweep)
@@ -69,6 +69,13 @@ def render(radar, png: Path):
         raise ValueError("No reflectivity field in this Level II volume: " + str(list(radar.fields)))
     values = np.ma.array(radar.fields[field]["data"][first:last + 1], dtype=float)
     lats, lons, _ = radar.get_gate_lat_lon_alt(sweep)
+    # Keep the native range-gate detail in the storm-scale display, rather than
+    # shrinking an entire 460-km radius scan into a modest 1400-pixel image.
+    gate_ranges = np.asarray(radar.range['data'])
+    keep = np.flatnonzero(gate_ranges <= max_range_km*1000)
+    if not len(keep):raise RuntimeError('No Level II gates within chosen range')
+    ng = min(len(keep),values.shape[1])
+    values=values[:,:ng];lats=lats[:,:ng];lons=lons[:,:ng]
     # Guard against masked, non-finite, or very low returns.
     mask = np.ma.getmaskarray(values) | ~np.isfinite(values.filled(np.nan)) | (values.filled(-999) < 5)
     values = np.ma.masked_where(mask, values)
@@ -83,7 +90,8 @@ def render(radar, png: Path):
     lon_max, lat_max = to_geo.transform(xmax,ymax)
     bounds = [[lat_min, lon_min], [lat_max, lon_max]]
     size = 10
-    fig = plt.figure(figsize=(size, size), dpi=140, facecolor=(0,0,0,0))
+    dpi=max(120,int(image_size_px/size))
+    fig = plt.figure(figsize=(size, size), dpi=dpi, facecolor=(0,0,0,0))
     ax = fig.add_axes([0,0,1,1])
     ax.set_xlim(xmin,xmax)
     ax.set_ylim(ymin,ymax)
@@ -108,6 +116,8 @@ def run():
     parser.add_argument("--end", help="UTC ISO end")
     parser.add_argument("--latest", action="store_true", help="Last 90 min")
     parser.add_argument("--max-files", type=int, default=6)
+    parser.add_argument("--range-km",type=int,default=160,help="Radar radius to render in km (80–230); native gates preserved")
+    parser.add_argument("--pixels",type=int,default=2300,help="PNG width/height in pixels (1400–2800)")
     args = parser.parse_args()
     site = args.site.upper()
     if not re.fullmatch(r"K[A-Z0-9]{3}", site):
@@ -122,6 +132,8 @@ def run():
     if end <= start or end - start > dt.timedelta(hours=6):
         parser.error("Time range must be greater than 0 and at most 6 hours")
     limit = min(max(args.max_files, 1), 24)
+    render_range=int(np.clip(args.range_km,80,230))
+    render_pixels=int(np.clip(args.pixels,1400,2800))
     client = boto3.client("s3", region_name="us-east-1", config=Config(signature_version=UNSIGNED))
     scans = list_scans(client, site, start, end)
     if not scans:
@@ -139,10 +151,11 @@ def run():
             client.download_file(BUCKET, key, str(raw))
             radar = pyart.io.read_nexrad_archive(str(raw))
             relative = Path("data")/site/f"{stamp:%Y%m%d_%H%M%S}.png"
-            bounds, angle = render(radar, ROOT/relative)
+            bounds, angle = render(radar, ROOT/relative, max_range_km=render_range, image_size_px=render_pixels)
         frames.append(dict(site=site,time=stamp.isoformat().replace("+00:00","Z"),
                            url="./"+relative.as_posix(),bounds=bounds,
-                           elevation_deg=round(angle,2),field="reflectivity",
+                           elevation_deg=round(angle,2),field="reflectivity",render_radius_km=render_range,
+                           image_pixels=render_pixels,
                            source="Unidata NEXRAD Level II",s3_key=key))
     DATA.mkdir(exist_ok=True)
     # Merge retained frames for other sites and dates, retaining bounded history.
