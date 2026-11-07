@@ -167,3 +167,13 @@ The experimental **Downstream evolution** panel supports the following workflow:
 Because future spatial environmental evolution is not forecast by the current version, RAP fields are not evolved with lead time. Actual future QTor calculations would need time-varying RAP/HRRR gridded winds and convective geometry.
 
 User-interface tooltips now appear in a single screen-positioned body portal so they are not clipped by the scrolling sidebar or other sections. Interface text is now Poppins (webfont if available; Arial fallback).
+
+## v0.9.4 — streamlined drawing workflow and shape-preserving propagation
+
+The sidebar now groups related controls into collapsible sections: **Radar & Timeline**, **Track Drawing • Capture A/B**, **Environmental Data**, **Downstream Projection**, **QTor Analysis Settings**, **Map Layers**, and **Save & Export**. Radar, Track Drawing, and Downstream Projection open by default. The capture controls and Next Scan button now sit beside Freehand and the other line tools so users can trace → capture A → advance → redraw → capture B without scrolling between unrelated panels.
+
+The downstream algorithm no longer projects unbounded individual correspondence vectors to create oversized/warped swaths. It calculates a **robust median translational motion** from central line elements, smooths local differential motions, limits departures to 12 kt before blending, and defaults to **90% Scan B shape preservation**. At 100%, all projected line points translate with the same dominant motion vector; lower settings apply modest local variation. This is an illustrative kinematic model, not a validated nowcast.
+
+The large overlapping per-segment quadrilaterals were replaced with one narrow, **line-normal coherent uncertainty ribbon** surrounding the projected line, visually limited to ±16 km. The uncertainty setting is a presentation parameter, not a statistically verified confidence bound. Intermediate 30-minute lines, yellow motion vectors, and green/red relative-score annotations remain available, with the latter retaining their **current** environmental values under a persistence assumption.
+
+**Limitations:** Two freehand traces do not establish one-to-one tracking of storm features. The motion vectors may reflect growth/decay, line deformation, or manual placement error. Temporal changes in RAP/HRRR environment, storm intensity, and tornado occurrence are not predicted.
