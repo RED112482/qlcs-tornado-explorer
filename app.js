@@ -1,7 +1,8 @@
 'use strict';
 const $=id=>document.getElementById(id),R=6371.0088,D=Math.PI/180,rad=x=>x*D,deg=x=>x/D;
 const map=L.map('map',{preferCanvas:true}).setView([31.15,-88.55],7);
-L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:19}).addTo(map);
+// Flat charcoal canvas: no basemap tiles, API keys, or street labels.
+map.getContainer().style.background='#30343a';
 map.createPane('radarPane');map.getPane('radarPane').style.zIndex=330;
 map.createPane('boundaryPane');map.getPane('boundaryPane').style.zIndex=370;
 const drawn=L.featureGroup().addTo(map),analysis=L.layerGroup().addTo(map);
@@ -18,11 +19,12 @@ function refresh(){
  if(historical&&!scanTimes.length){$('radarStatus').textContent='Choose archived scans';return;}
  const ts=historical?scanTimes[Number($('scanSlider').value)]:null;
  const stamp=ts?ts.slice(0,16).replace(/[-:T]/g,''):'0';
- const base=historical?'c':'cache';
+ const base='cache'; // Official IEM TMS endpoint works for latest AND timestamped archived scans.
  radar=L.tileLayer(IEM+'/'+base+'/tile.py/1.0.0/ridge::'+site+'-'+product+'-'+stamp+'/{z}/{x}/{y}.png',{tms:true,pane:'radarPane',maxZoom:13,maxNativeZoom:10,opacity:Number($('radarOpacity').value)/100,attribution:'© Iowa Environmental Mesonet'}).addTo(map);
  let success=false,errors=0;
- radar.on('tileload',()=>{success=true;$('radarStatus').textContent='Radar tiles loaded';});
- radar.on('tileerror',()=>{if(!success&&++errors>2){$('radarStatus').textContent='Radar tile unavailable';$('scanStatus').textContent='No imagery returned. Try a different scan/site or N0Q.';}});
+ const timeout=setTimeout(()=>{if(!success){$('radarStatus').textContent='Radar slow/unavailable';$('scanStatus').textContent='No radar tile confirmed within 12 s. Try switching products or site.';}},12000);
+ radar.on('tileload',()=>{success=true;clearTimeout(timeout);$('radarStatus').textContent='Radar tile response received';});
+ radar.on('tileerror',()=>{if(!success&&++errors>2){clearTimeout(timeout);$('radarStatus').textContent='Radar tile unavailable';$('scanStatus').textContent='No imagery returned. Try a different scan/site or N0Q.';}});
  $('radarStatus').textContent='Loading '+site+' '+product;
  $('radarTime').textContent='K'+site+' '+product+' • '+(ts?ts+' UTC':'latest available');
 }
@@ -32,10 +34,10 @@ async function findScans(){
  const t0=Date.parse(a+':00Z'),t1=Date.parse(b+':00Z');
  if(!Number.isFinite(t0)||!Number.isFinite(t1)||t1<=t0||t1-t0>6*3600e3){$('scanStatus').textContent='Enter a UTC window of up to 6 hours.';return;}
  $('scanStatus').textContent='Finding exact scan timestamps…';
- const q=new URLSearchParams({operation:'list',radar:$('site').value,product:$('product').value,start:new Date(t0).toISOString(),end:new Date(t1).toISOString()});
+ const q=new URLSearchParams({operation:'list',radar:$('site').value,product:$('product').value,start:new Date(t0).toISOString().slice(0,16)+'Z',end:new Date(t1).toISOString().slice(0,16)+'Z'});
  try{
-  const response=await fetch(IEM+'/json/radar?'+q,{cache:'no-store'});if(!response.ok)throw Error('Metadata HTTP '+response.status);
-  const payload=await response.json();scanTimes=(payload.scans||[]).map(x=>x.ts).filter(x=>/^\d{4}-\d\d-\d\dT\d\d:\d\dZ$/.test(x));
+  const response=await fetch(IEM+'/json/radar.py?'+q,{cache:'no-store'});if(!response.ok)throw Error('Metadata HTTP '+response.status);
+  const payload=await response.json();scanTimes=(Array.isArray(payload)?payload:(payload.scans||payload.times||payload.timestamps||[])).map(x=>typeof x==='string'?x:(x.ts||x.time||x.valid||'')).map(x=>x.replace(/:00Z$/,'Z')).filter(x=>/^\d{4}-\d\d-\d\dT\d\d:\d\dZ$/.test(x));
   if(!scanTimes.length)throw Error('No archived '+$('product').value+' scans in selected window.');
   $('scanSlider').max=scanTimes.length-1;$('scanSlider').value='0';$('scanSlider').disabled=false;
   $('scanStatus').textContent=scanTimes.length+' scans found.';setScan(0);
@@ -62,7 +64,7 @@ const Boundary=L.GridLayer.extend({createTile(coords,done){
  const q=new URLSearchParams({f:'image',bbox:[sw.x,sw.y,ne.x,ne.y].join(','),bboxSR:'3857',imageSR:'3857',size:'256,256',format:'png32',transparent:'true',layers:'show:'+this.options.layerId});
  im.onload=()=>done(null,im);im.onerror=()=>done(new Error('Boundary unavailable'),im);im.src=REF+'?'+q;return im;
 }});
-const borders={states:new Boundary({layerId:3,pane:'boundaryPane',opacity:.95,maxZoom:14}),counties:new Boundary({layerId:2,pane:'boundaryPane',opacity:.65,maxZoom:14}),cwas:new Boundary({layerId:1,pane:'boundaryPane',opacity:.95,maxZoom:14})};
+const borders={states:new Boundary({layerId:3,pane:'boundaryPane',opacity:1,maxZoom:14}),counties:new Boundary({layerId:2,pane:'boundaryPane',opacity:.72,maxZoom:14}),cwas:new Boundary({layerId:1,pane:'boundaryPane',opacity:1,maxZoom:14})};
 for(const id of Object.keys(borders)){$(id).onchange=()=>{$(id).checked?borders[id].addTo(map):map.removeLayer(borders[id]);};$(id).onchange();}
 refresh();
 function distance(a,b){let da=rad(b.lat-a.lat),db=rad(b.lng-a.lng),h=Math.sin(da/2)**2+Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(db/2)**2;return 2*R*Math.atan2(Math.sqrt(h),Math.sqrt(1-h));}
