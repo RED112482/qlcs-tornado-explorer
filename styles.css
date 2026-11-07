@@ -6,3 +6,9 @@
 .sidebar #archiveFields .buttons button{flex:1;min-width:0}
 .sidebar section a{color:#7fd5f4;font-size:12px}
 .sidebar #scanStatus{overflow-wrap:anywhere}
+
+/* v0.3: solid charcoal map without street or terrain tiles */
+#map,.leaflet-container,.leaflet-pane.leaflet-map-pane{background:#30343a!important}
+.leaflet-container{outline:none}
+#map .leaflet-control-attribution{background:rgba(35,38,43,.75);color:#bbc5ce}
+#map .leaflet-control-attribution a{color:#c7e8f4}
