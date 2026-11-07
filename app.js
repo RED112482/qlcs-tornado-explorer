@@ -45,25 +45,67 @@ function refresh(){
  $('radarStatus').textContent='Loading '+site+' '+product;
  $('radarTime').textContent='K'+site+' '+product+' • '+(ts?ts+' UTC':'latest available');
 }
+let archiveRequestVersion=0;
+function normalizeIEMTime(value){
+ const t=typeof value==='string'?value:(
+   value?.ts||value?.time||value?.valid||value?.timestamp||value?.datetime||
+   value?.date||value?.scan_time||'');
+ let raw=String(t).trim();
+ if(/^\d{12}$/.test(raw))raw=raw.slice(0,4)+'-'+raw.slice(4,6)+'-'+raw.slice(6,8)+'T'+raw.slice(8,10)+':'+raw.slice(10,12)+'Z';
+ if(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(?::\d{2})?$/.test(raw))raw=raw.replace(' ','T')+'Z';
+ if(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(raw))raw+='Z';
+ const ms=Date.parse(raw);
+ return Number.isFinite(ms)?new Date(ms).toISOString().slice(0,16)+'Z':null;
+}
+function scanRecords(payload){
+ const records=Array.isArray(payload)?payload:(payload?.scans||payload?.results||payload?.data||
+   payload?.times||payload?.timestamps||payload?.volumes||payload?.radar||[]);
+ if(Array.isArray(records))return records;
+ if(records&&typeof records==='object')return Object.values(records);
+ return [];
+}
 async function findScans(){
+ const request=++archiveRequestVersion;
  stopPlay();scanTimes=[];$('scanSlider').disabled=true;$('scanLabel').textContent='0/0';
- const a=$('startUTC').value,b=$('endUTC').value;
- const t0=parseZulu(a),t1=parseZulu(b); // strict YYYY-MM-DDTHH:mmZ; never local time
- if(!Number.isFinite(t0)||!Number.isFinite(t1)||t1<=t0||t1-t0>6*3600e3){$('scanStatus').textContent='Use YYYY-MM-DDTHH:mmZ for BOTH endpoints; UTC window must be 0–6 hours.';return;}
- $('scanStatus').textContent='Finding exact scan timestamps…';
- const q=new URLSearchParams({operation:'list',radar:$('site').value,product:$('product').value,start:new Date(t0).toISOString().slice(0,16)+'Z',end:new Date(t1).toISOString().slice(0,16)+'Z'});
- try{
-  const response=await fetch(IEM+'/json/radar.py?'+q,{cache:'no-store'});if(!response.ok)throw Error('Metadata HTTP '+response.status);
-  const payload=await response.json();
-  let items=Array.isArray(payload)?payload:(payload.scans||payload.times||payload.timestamps||payload.data||[]);
-  if(items&&typeof items==='object'&&!Array.isArray(items))items=Object.values(items);
-  scanTimes=items.map(x=>typeof x==='string'?x:(x.ts||x.time||x.valid||x.timestamp||''))
-   .map(x=>String(x).trim()).filter(x=>Number.isFinite(Date.parse(x)))
-   .map(x=>new Date(x).toISOString().slice(0,16)+'Z'); // canonical UTC minute timestamps, retains exact archived minute
-  if(!scanTimes.length)throw Error('No archived '+$('product').value+' scans in selected window.');
-  $('scanSlider').max=scanTimes.length-1;$('scanSlider').value='0';$('scanSlider').disabled=false;
-  $('scanStatus').textContent=scanTimes.length+' scans found.';setScan(0);
- }catch(e){$('scanStatus').textContent=e.message;$('radarStatus').textContent='Archive lookup unavailable';}
+ const t0=parseZulu($('startUTC').value),t1=parseZulu($('endUTC').value);
+ if(!Number.isFinite(t0)||!Number.isFinite(t1)||t1<=t0||t1-t0>6*3600e3){
+  $('scanStatus').textContent='Select a valid UTC/Zulu window of 1–6 hours.';return;
+ }
+ const site=$('site').value,start=new Date(t0).toISOString().slice(0,16)+'Z',
+   end=new Date(t1).toISOString().slice(0,16)+'Z',preferred=$('product').value;
+ const products=[preferred,...['N0B','N0Q','N0Z'].filter(p=>p!==preferred)];
+ $('scanStatus').textContent='Searching IEM archived reflectivity scans for K'+site+' '+start+'–'+end+'…';
+ $('radarStatus').textContent='Searching IEM Level III archive';
+ const problems=[];
+ for(const product of products){
+  try{
+   const q=new URLSearchParams({operation:'list',radar:site,product,start,end});
+   const response=await fetch(IEM+'/json/radar.py?'+q,{cache:'no-store'});
+   if(!response.ok)throw Error('HTTP '+response.status);
+   const payload=await response.json();
+   if(payload?.error)throw Error(String(payload.error));
+   const records=scanRecords(payload);
+   const times=[...new Set(records.map(normalizeIEMTime).filter(t=>{
+     if(!t)return false;
+     const ms=Date.parse(t);return ms>=t0&&ms<t1;
+   }))].sort();
+   if(request!==archiveRequestVersion)return;
+   if(!times.length){problems.push(product+': no archived scans');continue;}
+   $('product').value=product;
+   scanTimes=times;
+   $('scanSlider').max=times.length-1;$('scanSlider').value='0';
+   $('scanSlider').disabled=false;
+   $('scanStatus').textContent=times.length+' IEM Level III '+product+' scan(s) for K'+site+' between '+start+' and '+end+
+      (product!==preferred?' (automatically selected available '+product+' product)':'')+'.';
+   $('radarStatus').textContent='IEM Level III archive';
+   setScan(0);
+   return;
+  }catch(e){problems.push(product+': '+e.message);}
+ }
+ if(request!==archiveRequestVersion)return;
+ $('scanStatus').textContent='No IEM Level III imagery found for K'+site+' '+start+'–'+end+'. '+problems.join('; ')+'. Try another radar or UTC window, or process raw Level II through GitHub Actions.';
+ $('radarStatus').textContent='No radar archive available for selection';
+ $('radarTime').textContent='No IEM archived radar scans at selected UTC window';
 }
 function setScan(i){if(!scanTimes.length)return;let n=Math.max(0,Math.min(i,scanTimes.length-1));$('scanSlider').value=n;$('scanLabel').textContent=(n+1)+'/'+scanTimes.length;refresh();}
 function changeMode(){
