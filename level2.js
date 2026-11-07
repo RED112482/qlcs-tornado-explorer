@@ -47,7 +47,14 @@
    $('radarDirect').href=frame.url;$('radarDirect').textContent='Open decoded Level II image';
    matchRap(frame.time);
  }
- refresh=function(){if(source.value==='level3'){clearLevel2();liveRefresh();}else showLevel2();};
+ refresh=function(){
+   if(source.value==='level3'){clearLevel2();liveRefresh();return;}
+   if($('mode').value==='live'){
+     const fresh=level2Frames().some(f=>normSite(f.site||level2Manifest.site)===normSite($('site').value)&&Date.now()-frameTime(f)<90*60000&&Date.now()>=frameTime(f));
+     if(!fresh){source.value='level3';clearLevel2();$('level2Info').textContent='No freshly processed Level II scan for this radar. Showing the independent IEM latest radar feed (Level III).';liveRefresh();return;}
+   }
+   showLevel2();
+ };
  findScans=async function(){
    if(source.value==='level3')return liveFindScans();
    const a=parseZulu($('startUTC').value),b=parseZulu($('endUTC').value);
@@ -173,8 +180,19 @@
  fetch('./data/rap.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(data=>{
    if(data){rapProfiles=Array.isArray(data.profiles)?data.profiles:[data];if(rapProfiles.length)applyRap(rapProfiles[0]);}
  }).catch(()=>{});
- getManifest().then(m=>{
+ getManifest().then(async m=>{
    const count=(m.frames||[]).length;
+   if(count){
+     const demo=m.frames.find(f=>normSite(f.site)==='HDC'&&f.time.startsWith('2024-06-04T21:'));
+     if(demo){
+       source.value='level2';$('site').value='HDC';$('mode').value='archive';$('archiveFields').hidden=false;
+       $('startUTC').value='2024-06-04T21:00Z';$('endUTC').value='2024-06-04T21:35Z';
+       map.setView(sites.HDC,8);
+       await findScans();
+       $('scanStatus').textContent=scanTimes.length+' decoded KHDC Level II scans loaded. Change mode to Latest for live radar; all timestamps shown are UTC/Zulu.';
+       calc();return;
+     }
+   }
    if(!count){
      source.value='level3';
      $('level2Info').textContent='Level II has 0 processed frames. Showing the independent high-resolution IEM radar feed until decoded Level II scans are published.';
