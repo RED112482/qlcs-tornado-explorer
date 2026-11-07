@@ -240,7 +240,7 @@
        if(!content)continue;
        const div='<div class="wind-grid-stack '+(data.source==='rap'?'barb-from-rap':'barb-representative')+'">'+content+'</div>';
        L.marker(geo,{pane:'windGridPane',interactive:false,keyboard:false,
-         icon:L.divIcon({className:'wind-grid-icon',html:div,iconSize:[48,48],iconAnchor:[24,24]})
+         icon:L.divIcon({className:'wind-grid-icon',html:div,iconSize:[48,48],iconAnchor:[24,42]})
        }).addTo(barbGrid);
        if(data.source==='rap')spatialCount++;else representativeCount++;
      }
