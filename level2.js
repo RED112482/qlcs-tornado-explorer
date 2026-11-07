@@ -103,13 +103,30 @@
  // among line sections, NEVER actual tornado likelihood or probability.
  const baseCalc=calc;
  function pennantBarb(speed,dir,color){
-   // Meteorological wind barb: shaft points toward wind FROM direction.
-   let s=Math.max(0,Math.round(speed/5)*5),n50=Math.floor(s/50);s%=50;let n10=Math.floor(s/10);s%=10;const n5=s>=5?1:0;
-   let shapes='<line x1="30" y1="48" x2="30" y2="5" stroke="'+color+'" stroke-width="2.2"/>';let y=7;
-   for(let k=0;k<n50;k++){shapes+='<path d="M30 '+y+' L49 '+(y+7)+' L30 '+(y+13)+' Z" fill="'+color+'"/>';y+=13;}
-   for(let k=0;k<n10;k++){shapes+='<line x1="30" y1="'+y+'" x2="48" y2="'+(y+8)+'" stroke="'+color+'" stroke-width="2"/>';y+=7;}
-   if(n5)shapes+='<line x1="30" y1="'+y+'" x2="39" y2="'+(y+4)+'" stroke="'+color+'" stroke-width="2"/>';
-   return '<svg width="62" height="62" viewBox="0 0 60 60" aria-hidden="true"><g transform="rotate('+dir+' 30 48)">'+shapes+'</g><circle cx="30" cy="48" r="2.5" fill="'+color+'"/></svg>';
+   // Meteorological convention: shaft points wind FROM. The barb feathers
+   // meet the staff at exactly 90° (not the diagonal feather from v0.8).
+   // A constant SVG pivot at (24,42) keeps the station anchor fixed.
+   const value=Math.max(0,Math.round(speed/5)*5);
+   let remainder=value,fifty=Math.floor(remainder/50);remainder%=50;
+   const tens=Math.floor(remainder/10);remainder%=10;
+   const five=remainder>=5?1:0;
+   const paint='stroke="'+color+'" stroke-width="2.1" stroke-linecap="round"';
+   let features='<line x1="24" y1="42" x2="24" y2="5" '+paint+'/>';
+   let y=6;
+   for(let n=0;n<fifty;n++){
+     // Right-angle pennant, with leading feather perpendicular to the staff.
+     features+='<path d="M24 '+y+' H38 V'+(y+9)+' Z" fill="'+color+'" stroke="'+color+'" stroke-width=".65"/>';
+     y+=11;
+   }
+   for(let n=0;n<tens;n++){
+     features+='<line x1="24" y1="'+y+'" x2="38" y2="'+y+'" '+paint+'/>';
+     y+=6;
+   }
+   if(five)features+='<line x1="24" y1="'+y+'" x2="32" y2="'+y+'" '+paint+'/>';
+   // Calm barbs render a ring. Cardinal rotation is exact (0=north, 90=east).
+   if(value===0)features='<circle cx="24" cy="42" r="4" fill="none" '+paint+'/>';
+   const from=(Number(dir)%360+360)%360;
+   return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true"><g transform="rotate('+from+' 24 42)">'+features+'</g></svg>';
  }
  function advancedDraw(){
    windMarkerLayer.clearLayers();
@@ -154,10 +171,11 @@
  function renderBarbGrid(){
    barbGrid.clearLayers();
    if(!$('showBarbs').checked){$('windGridStatus').textContent='Wind barb grid hidden.';return;}
-   const chosen=$('barbLevels').value,spacing=Math.max(25,Number($('barbSpacing').value)||55);
+   const spacing=Math.max(25,Number($('barbSpacing').value)||55);
    $('barbSpacingValue').textContent=String(spacing);
    const bounds=map.getBounds();if(!bounds.isValid())return;
-   const levels=chosen==='all'?['0','1','3']:[chosen];
+   const levels=['0','1','3'].filter(level=>$('showBarb'+level).checked);
+   if(!levels.length){$('windGridStatus').textContent='All wind-barb levels hidden.';return;}
    const colors={'0':'#d8f2ff','1':'#ffdc79','3':'#d4abff'};
    let count=0;
    function addBarbs(lat,lon,winds){
@@ -165,16 +183,14 @@
      const markup=levels.map(level=>{
        const speed=Number(winds['spd'+level]),from=Number(winds['dir'+level]);
        if(!Number.isFinite(speed)||!Number.isFinite(from))return '';
-       const svg=pennantBarb(speed,from,colors[level]);
-       const label=level==='0'?'10m':level+'km';
-       return '<div class="barb-unit">'+svg+'<small>'+label+'</small></div>';
+       return '<div class="barb-layer barb-'+level+'">'+pennantBarb(speed,from,colors[level])+'</div>';
      }).join('');
      if(!markup)return;
-     const html='<div class="barb-cluster '+(levels.length===3?'barb-triplet':'')+'">'+markup+'</div>';
-     const width=levels.length===3?114:45;
+     const content='<div class="wind-grid-stack">'+markup+'</div>';
+     // Every level shares this identical geographic marker center/pivot.
      L.marker([lat,lon],{pane:'windGridPane',interactive:false,keyboard:false,
-       icon:L.divIcon({className:'wind-grid-icon',html,iconSize:[width,65],
-       iconAnchor:[width/2,33]})}).addTo(barbGrid);
+       icon:L.divIcon({className:'wind-grid-icon',html:content,iconSize:[48,48],
+       iconAnchor:[24,24]})}).addTo(barbGrid);
      count++;
    }
    const actual=findSpatialGrid();
@@ -212,7 +228,7 @@
  loadSpatialGrid();
  calc=function(){baseCalc();advancedDraw();renderBarbGrid();};
  ['showNormals','showMotion','showFlare'].forEach(id=>$(id).addEventListener('change',advancedDraw));
- ['showBarbs','barbLevels','barbSpacing'].forEach(id=>$(id).addEventListener('input',renderBarbGrid));
+ ['showBarbs','showBarb0','showBarb1','showBarb3','barbSpacing'].forEach(id=>$(id).addEventListener('input',renderBarbGrid));
  map.on('moveend',renderBarbGrid);
  renderBarbGrid();
  // RAP import is data provenance; changing a wind input switches to manual override.
