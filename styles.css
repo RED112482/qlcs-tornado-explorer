@@ -103,3 +103,8 @@
 .two-fields input[type=number]{max-width:100%}
 #motionAnalysisSection .buttons{display:flex;gap:8px;flex-wrap:wrap}
 #motionAnalysisSection .buttons button{flex:1 1 125px}
+
+/* v0.9.2 forecast lead-time labels, overlaid without pointer capture */
+.motion-hour-label{background:transparent!important;border:none!important;pointer-events:none!important}
+.motion-hour-label span{display:inline-block;white-space:nowrap;background:#123347ef;color:#f9f6be;border:1px solid #e9d67b;border-radius:5px;font-size:11px;font-weight:700;padding:3px 6px;box-shadow:0 2px 10px #0008}
+.motion-hour-label.final span{background:#2d4c39ee;border-color:#a7f4a7;color:#f0fff2}
