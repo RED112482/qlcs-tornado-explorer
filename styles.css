@@ -137,3 +137,9 @@
 .fold-motion #motionForecastStatus{color:#f0f8fc}
 #shapeLockValue{color:#a8e9ec}
 @media(max-width:900px){.sidebar{display:block;max-height:none}.sidebar-fold{margin-bottom:10px}}
+
+/* v0.9.5: emphasize inflow assessment geography, not a tornado swath */
+.inflow-explainer{border:1px solid #8fbd93;border-left:4px solid #e9d16a;border-radius:8px;background:#2e3224;color:#f0edcf;padding:9px 10px;margin:10px 0 12px;line-height:1.55}
+.inflow-explainer strong{color:#ffe18c}
+.legend .sw.downstream{background:linear-gradient(90deg,rgba(46,221,129,.3),rgba(46,221,129,.8));height:9px;border:1px solid #4dffa1}
+.inflow-reference-label{background:rgba(48,43,20,.92)!important;border:1px solid #ffe385!important;border-radius:6px!important;color:#fff2a0!important;box-shadow:0 2px 9px #0008;padding:3px 6px;white-space:nowrap;font:600 10px/1.4 'Poppins',Arial,sans-serif;pointer-events:none}
