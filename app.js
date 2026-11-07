@@ -26,7 +26,7 @@ function refresh(){
  const base='cache'; // IEM documentation's primary archive and realtime tile endpoint.
  const tileUrl=IEM+'/'+base+'/tile.py/1.0.0/ridge::'+site+'-'+product+'-'+stamp+'/{z}/{x}/{y}.png';
  radar=L.tileLayer(tileUrl,{tms:false,pane:'radarPane',maxZoom:13,maxNativeZoom:10,opacity:Number($('radarOpacity').value)/100,attribution:'© Iowa Environmental Mesonet',keepBuffer:2}).addTo(map);
- const previewCoords=map.project(sites[site],8).divideBy(256).floor();
+ const previewCoords=map.project(L.latLng(sites[site]),8).divideBy(256).floor();
  const directUrl=tileUrl.replace('{z}','8').replace('{x}',String(previewCoords.x)).replace('{y}',String(previewCoords.y));
  $('radarDirect').href=directUrl;
  $('radarDirect').textContent='Open source radar tile (K'+site+' '+product+')';
