@@ -20,3 +20,7 @@
 /* Explicit UTC archive display and source notice */
 #scanStatus,#level2Info{font-size:12px;line-height:1.5}
 #archiveFields label{letter-spacing:.1px}
+
+/* Explicit model provenance, independent of editable wind controls */
+.source-status{border:1px solid #55778b;border-left:4px solid #70d0e1;border-radius:7px;padding:9px 10px;margin:10px 0;background:#172c38;color:#e4f3f7;font-size:12px;line-height:1.55}
+#fetchRap{flex:1 1 150px}#loadRap{flex:1 1 120px}
