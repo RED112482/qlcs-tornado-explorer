@@ -31,7 +31,7 @@
   showBarb0:'Show or hide 10-m (near-surface) wind barbs. All selected levels share the same station anchor.',
   showBarb1:'Show or hide 1-km AGL wind barbs. These overlay the other levels at precisely the same grid point.',
   showBarb3:'Show or hide 3-km AGL wind barbs. These overlay the other levels at precisely the same grid point.',
-  barbSpacing:'Ground-distance spacing between plotted wind-barb grid nodes in kilometers. Smaller spacing yields more symbols, potentially obscuring radar details. Does not change wind values or analysis.',
+  barbSpacing:'Spacing between plotted barbs in SCREEN PIXELS. Rows and columns remain square and equally spaced after every zoom/pan. Changes visual density only, not the wind field or QTor score.',
   showNormals:'White arrows show each segment’s local line-normal direction, used to project 0–3-km shear. They are distinct from system motion.',
   showMotion:'Yellow arrows point in the manually specified QLCS motion direction and illustrate where a segment moves downstream. They are NOT individual tornado-track forecasts.',
   showFlare:'Project each segment a schematic distance downstream. Green marks the larger relative index; red marks the smaller index. Neither color proves or rules out tornadogenesis.',
