@@ -1,4 +1,6 @@
 {
   "site": "KHDC",
-  "cycle_utc": "2024-06-04T21:00Z"
+  "cycle_utc": "2024-06-04T21:00Z",
+  "purpose": "Retry archived RAP analysis after UTC Herbie fix",
+  "attempt": 2
 }
