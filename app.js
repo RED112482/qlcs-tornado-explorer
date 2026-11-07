@@ -20,7 +20,7 @@ function refresh(){
  const ts=historical?scanTimes[Number($('scanSlider').value)]:null;
  const stamp=ts?ts.slice(0,16).replace(/[-:T]/g,''):'0';
  const base='cache'; // Official IEM TMS endpoint works for latest AND timestamped archived scans.
- radar=L.tileLayer(IEM+'/'+base+'/tile.py/1.0.0/ridge::'+site+'-'+product+'-'+stamp+'/{z}/{x}/{y}.png',{tms:true,pane:'radarPane',maxZoom:13,maxNativeZoom:10,opacity:Number($('radarOpacity').value)/100,attribution:'© Iowa Environmental Mesonet'}).addTo(map);
+ radar=L.tileLayer(IEM+'/'+base+'/tile.py/1.0.0/ridge::'+site+'-'+product+'-'+stamp+'/{z}/{x}/{y}.png',{tms:false,pane:'radarPane',maxZoom:13,maxNativeZoom:10,opacity:Number($('radarOpacity').value)/100,attribution:'© Iowa Environmental Mesonet'}).addTo(map);
  let success=false,errors=0;
  const timeout=setTimeout(()=>{if(!success){$('radarStatus').textContent='Radar slow/unavailable';$('scanStatus').textContent='No radar tile confirmed within 12 s. Try switching products or site.';}},12000);
  radar.on('tileload',()=>{success=true;clearTimeout(timeout);$('radarStatus').textContent='Radar tile response received';});
