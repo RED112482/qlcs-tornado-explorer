@@ -1,5 +1,9 @@
 name: Process NEXRAD Level II
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'data/level2-request.json'
   workflow_dispatch:
     inputs:
       site:
@@ -53,13 +57,35 @@ jobs:
           cache: "pip"
           cache-dependency-path: "requirements-radar.txt"
       - run: pip install -r requirements-radar.txt
-      - name: Decode real Level II scans
+      - name: Resolve scan request
+        id: request
         env:
+          EVENT_NAME: ${{ github.event_name }}
           SITE: ${{ inputs.site }}
           MODE: ${{ inputs.mode }}
           START: ${{ inputs.start_utc }}
           END: ${{ inputs.end_utc }}
           LIMIT: ${{ inputs.max_scans }}
+        run: |
+          if [ "$EVENT_NAME" = "push" ]; then
+            SITE=$(python -c "import json;print(json.load(open('data/level2-request.json'))['site'])")
+            MODE=historical
+            START=$(python -c "import json;print(json.load(open('data/level2-request.json'))['start_utc'])")
+            END=$(python -c "import json;print(json.load(open('data/level2-request.json'))['end_utc'])")
+            LIMIT=$(python -c "import json;print(json.load(open('data/level2-request.json')).get('max_scans',6))")
+          fi
+          echo "site=$SITE" >> "$GITHUB_OUTPUT"
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          echo "start=$START" >> "$GITHUB_OUTPUT"
+          echo "end=$END" >> "$GITHUB_OUTPUT"
+          echo "limit=$LIMIT" >> "$GITHUB_OUTPUT"
+      - name: Decode real Level II scans
+        env:
+          SITE: ${{ steps.request.outputs.site }}
+          MODE: ${{ steps.request.outputs.mode }}
+          START: ${{ steps.request.outputs.start }}
+          END: ${{ steps.request.outputs.end }}
+          LIMIT: ${{ steps.request.outputs.limit }}
         run: |
           if [ "$MODE" = "latest" ]; then
             python scripts/process_level2.py --site "$SITE" --latest --max-files "$LIMIT"
