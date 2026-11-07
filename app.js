@@ -16,6 +16,14 @@ map.on(L.Draw.Event.EDITED,()=>{calc();save();});map.on(L.Draw.Event.DELETED,()=
 // IEM TMS RIDGE individual Level III imagery, NOT raw Level II.
 const IEM='https://mesonet.agron.iastate.edu',sites={MOB:[30.68,-88.24],EVX:[30.56,-85.92],DGX:[32.28,-89.98],HDC:[30.52,-90.42],LIX:[30.34,-89.83],EOX:[31.46,-85.46],VAX:[30.89,-83.00],TLH:[30.40,-84.33],BMX:[33.17,-86.77],JAN:[32.32,-90.08]};
 let radar=null,scanTimes=[],playTimer=null;
+function parseZulu(input){
+ const s=String(input||'').trim();
+ const match=/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})Z$/.exec(s);
+ if(!match)return NaN;
+ const ms=Date.parse(s);
+ if(!Number.isFinite(ms)||new Date(ms).toISOString().slice(0,16)!==s.slice(0,16))return NaN;
+ return ms;
+}
 const stopPlay=()=>{if(playTimer)clearInterval(playTimer);playTimer=null;$('scanPlay').textContent='▶ Play';};
 function refresh(){
  if(radar)map.removeLayer(radar);
@@ -40,8 +48,8 @@ function refresh(){
 async function findScans(){
  stopPlay();scanTimes=[];$('scanSlider').disabled=true;$('scanLabel').textContent='0/0';
  const a=$('startUTC').value,b=$('endUTC').value;
- const t0=Date.parse(a+':00Z'),t1=Date.parse(b+':00Z'); // explicitly UTC: datetime-local is wall-clock text
- if(!Number.isFinite(t0)||!Number.isFinite(t1)||t1<=t0||t1-t0>6*3600e3){$('scanStatus').textContent='Enter a UTC window of up to 6 hours.';return;}
+ const t0=parseZulu(a),t1=parseZulu(b); // strict YYYY-MM-DDTHH:mmZ; never local time
+ if(!Number.isFinite(t0)||!Number.isFinite(t1)||t1<=t0||t1-t0>6*3600e3){$('scanStatus').textContent='Use YYYY-MM-DDTHH:mmZ for BOTH endpoints; UTC window must be 0–6 hours.';return;}
  $('scanStatus').textContent='Finding exact scan timestamps…';
  const q=new URLSearchParams({operation:'list',radar:$('site').value,product:$('product').value,start:new Date(t0).toISOString().slice(0,16)+'Z',end:new Date(t1).toISOString().slice(0,16)+'Z'});
  try{
