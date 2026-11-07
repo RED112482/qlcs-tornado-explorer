@@ -115,6 +115,15 @@ jobs:
             echo "Nothing to publish"
           else
             git commit -m "Publish Level II radar frames and optional RAP winds"
-            git pull --rebase origin main
-            git push origin HEAD:main
+            for attempt in 1 2 3 4 5 6 7 8; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then
+                echo "Published processed Level II imagery"
+                exit 0
+              fi
+              echo "Remote moved during publication; retry $attempt"
+              sleep $((attempt * 2))
+            done
+            echo "Could not publish radar frames after retries" >&2
+            exit 1
           fi
