@@ -170,99 +170,82 @@
  }
  function renderBarbGrid(){
    barbGrid.clearLayers();
-   if(!$('showBarbs').checked){$('windGridStatus').textContent='Wind barb grid hidden.';return;}
-   const spacing=Math.max(25,Number($('barbSpacing').value)||55);
-   $('barbSpacingValue').textContent=String(spacing);
-   const bounds=map.getBounds();if(!bounds.isValid())return;
+   const status=$('windGridStatus');
+   if(!$('showBarbs').checked){status.textContent='Wind barb grid hidden.';return;}
    const levels=['0','1','3'].filter(level=>$('showBarb'+level).checked);
-   if(!levels.length){$('windGridStatus').textContent='All wind-barb levels hidden.';return;}
+   if(!levels.length){status.textContent='No wind levels selected.';return;}
+   const spacing=Math.max(75,Math.min(180,Number($('barbSpacing').value)||110));
+   $('barbSpacingValue').textContent=String(spacing);
+   const screen=map.getSize();
+   if(screen.x<1||screen.y<1)return;
    const colors={'0':'#d8f2ff','1':'#ffdc79','3':'#d4abff'};
-   let count=0;
-   function addBarbs(lat,lon,winds){
-     if(!bounds.contains([lat,lon])||count>=400)return;
-     const markup=levels.map(level=>{
-       const speed=Number(winds['spd'+level]),from=Number(winds['dir'+level]);
-       if(!Number.isFinite(speed)||!Number.isFinite(from))return '';
-       return '<div class="barb-layer barb-'+level+'">'+pennantBarb(speed,from,colors[level])+'</div>';
-     }).join('');
-     if(!markup)return;
-     const content='<div class="wind-grid-stack">'+markup+'</div>';
-     // Every level shares this identical geographic marker center/pivot.
-     L.marker([lat,lon],{pane:'windGridPane',interactive:false,keyboard:false,
-       icon:L.divIcon({className:'wind-grid-icon',html:content,iconSize:[48,48],
-       iconAnchor:[24,24]})}).addTo(barbGrid);
-     count++;
-   }
-   // TRUE geographic lat/lon grid: a fixed lattice of parallels and meridians,
-   // so markers share EXACT latitude across a row and EXACT longitude in a column.
-   // This replaces the projected pixel grid, which is not a regular lat/lon field.
-   const actual=findSpatialGrid(),view=map.getBounds();
-   const stepDeg=spacing/111.2;
-   // Anchor to multiples of a global step, not viewport/map pixel coordinates:
-   // panning cannot change the position of any geographic grid station.
-   let south=Math.max(-85,view.getSouth()),north=Math.min(85,view.getNorth()),
-       west=Math.max(-180,view.getWest()),east=Math.min(180,view.getEast());
-   if(actual&&Array.isArray(actual.points)&&actual.points.length){
-     const lat=actual.points.map(p=>p.lat),lon=actual.points.map(p=>p.lon);
-     // Stay inside the RAP sampled region: no extrapolating outside its area.
-     south=Math.max(south,Math.min(...lat)+.08);
-     north=Math.min(north,Math.max(...lat)-.08);
-     west=Math.max(west,Math.min(...lon)+.08);
-     east=Math.min(east,Math.max(...lon)-.08);
-   }
-   const firstLat=Math.ceil((south-1e-9)/stepDeg);
-   const lastLat=Math.floor((north+1e-9)/stepDeg);
-   const firstLon=Math.ceil((west-1e-9)/stepDeg);
-   const lastLon=Math.floor((east+1e-9)/stepDeg);
-   const plottedRows=Math.max(0,lastLat-firstLat+1);
-   const plottedCols=Math.max(0,lastLon-firstLon+1);
+   const actual=findSpatialGrid();
    const uniform={};
    for(const level of ['0','1','3']){
      uniform['dir'+level]=Number($('dir'+level).value);
      uniform['spd'+level]=Number($('spd'+level).value);
    }
-   function gridWindsAt(lat,lon){
-     if(!actual||!Array.isArray(actual.points)||!actual.points.length)return uniform;
-     const nearest=actual.points.map(point=>{
-       const dLat=(point.lat-lat)*111.2;
-       const dLon=(point.lon-lon)*111.2*Math.cos(lat*Math.PI/180);
-       return {point,d:Math.hypot(dLat,dLon)};
+   let spatialCount=0,representativeCount=0;
+   // One fixed square grid in SCREEN pixels, centered in the viewport.
+   // Recomputed after zoom/move so columns/rows remain equally separated.
+   // Unlike a geographic latitude/longitude matrix, Mercator cannot compress
+   // northern rows or create irregular spacing at different map zoom levels.
+   const columns=Math.max(1,Math.floor(screen.x/spacing));
+   const rows=Math.max(1,Math.floor(screen.y/spacing));
+   const xOrigin=(screen.x-(columns-1)*spacing)/2;
+   const yOrigin=(screen.y-(rows-1)*spacing)/2;
+   function windsAt(lat,lon){
+     if(!actual||!Array.isArray(actual.points)||!actual.points.length)
+       return {winds:uniform,source:'representative'};
+     const near=actual.points.map(point=>{
+       const north=(point.lat-lat)*111.2;
+       const east=(point.lon-lon)*111.2*Math.cos(lat*Math.PI/180);
+       return {point,d:Math.hypot(north,east)};
      }).sort((p,q)=>p.d-q.d).slice(0,4);
-     if(!nearest.length)return null;
-     const out={};
+     // Do not call winds from remote locations "actual spatial RAP."
+     // Unsupported cells remain on the square grid using the user's displayed
+     // representative profile and are visibly dimmed.
+     if(!near.length||near[0].d>38)return {winds:uniform,source:'representative'};
+     const result={};
      for(const level of ['0','1','3']){
        let u=0,v=0,total=0;
-       for(const {point,d} of nearest){
-         const speed=Number(point.winds?.['spd'+level]),from=Number(point.winds?.['dir'+level]);
+       for(const {point,d} of near){
+         const speed=Number(point.winds?.['spd'+level]);
+         const from=Number(point.winds?.['dir'+level]);
          if(!Number.isFinite(speed)||!Number.isFinite(from))continue;
-         const weight=1/Math.max(d,1.5)**2,theta=from*Math.PI/180;
-         u-=speed*Math.sin(theta)*weight;
-         v-=speed*Math.cos(theta)*weight;total+=weight;
+         const weight=1/Math.max(1.5,d)**2;
+         const direction=from*Math.PI/180;
+         u-=speed*Math.sin(direction)*weight;
+         v-=speed*Math.cos(direction)*weight;
+         total+=weight;
        }
-       if(!total)return null;
+       if(!total)return {winds:uniform,source:'representative'};
        u/=total;v/=total;
-       out['spd'+level]=Math.hypot(u,v);
-       out['dir'+level]=(Math.atan2(-u,-v)*180/Math.PI+360)%360;
+       result['spd'+level]=Math.hypot(u,v);
+       result['dir'+level]=(Math.atan2(-u,-v)*180/Math.PI+360)%360;
      }
-     return out;
+     return {winds:result,source:'rap'};
    }
-   // Complete lat-lon matrix; never skip interior stations for visual spacing.
-   // Square in angular geographic coordinates (degrees); longitudinal ground
-   // spacing is naturally smaller than latitude spacing away from the equator.
-   for(let j=firstLat;j<=lastLat;j++){
-     const lat=Number((j*stepDeg).toFixed(8));
-     for(let i=firstLon;i<=lastLon;i++){
-       const lon=Number((i*stepDeg).toFixed(8));
-       const winds=gridWindsAt(lat,lon);
-       if(winds)addBarbs(lat,lon,winds);
+   for(let j=0;j<rows;j++){
+     for(let i=0;i<columns;i++){
+       const screenPoint=L.point(xOrigin+i*spacing,yOrigin+j*spacing);
+       const geo=map.containerPointToLatLng(screenPoint);
+       const data=windsAt(geo.lat,geo.lng);
+       const content=levels.map(level=>{
+         const speed=Number(data.winds['spd'+level]);
+         const from=Number(data.winds['dir'+level]);
+         if(!Number.isFinite(speed)||!Number.isFinite(from))return '';
+         return '<div class="barb-layer barb-'+level+'">'+pennantBarb(speed,from,colors[level])+'</div>';
+       }).join('');
+       if(!content)continue;
+       const div='<div class="wind-grid-stack '+(data.source==='rap'?'barb-from-rap':'barb-representative')+'">'+content+'</div>';
+       L.marker(geo,{pane:'windGridPane',interactive:false,keyboard:false,
+         icon:L.divIcon({className:'wind-grid-icon',html:div,iconSize:[48,48],iconAnchor:[24,24]})
+       }).addTo(barbGrid);
+       if(data.source==='rap')spatialCount++;else representativeCount++;
      }
    }
-
-   if(actual){
-     $('windGridStatus').textContent='LAT/LON RAP GRID • '+plottedRows+' rows × '+plottedCols+' columns ('+count+' points) • K'+$('site').value+' • '+niceTime(actual.valid_time)+' • regular map positions, wind vectors interpolated from RAP spatial profiles within their processed coverage.';
-   }else{
-     $('windGridStatus').textContent='LAT/LON UNIFORM GRID • '+plottedRows+' rows × '+plottedCols+' columns ('+count+' points). Uniform manual/site winds repeated (not spatial RAP vectors).';
-   }
+   status.textContent='SCREEN-ALIGNED SQUARE GRID • '+rows+' rows × '+columns+' columns • '+spacing+' px spacing at every zoom • '+spatialCount+' RAP-interpolated points'+(actual?' at '+niceTime(actual.valid_time):'')+'; '+representativeCount+' dimmed representative-wind points outside RAP coverage (not actual spatial RAP).';
  }
  async function loadSpatialGrid(){
    try{
@@ -277,7 +260,7 @@
  calc=function(){baseCalc();advancedDraw();renderBarbGrid();};
  ['showNormals','showMotion','showFlare'].forEach(id=>$(id).addEventListener('change',advancedDraw));
  ['showBarbs','showBarb0','showBarb1','showBarb3','barbSpacing'].forEach(id=>$(id).addEventListener('input',renderBarbGrid));
- map.on('moveend',renderBarbGrid);
+ map.on('moveend zoomend resize',renderBarbGrid);
  renderBarbGrid();
  // RAP import is data provenance; changing a wind input switches to manual override.
  function setWindSource(msg){$('windSource').textContent=msg;}
