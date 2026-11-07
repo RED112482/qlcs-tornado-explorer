@@ -115,7 +115,7 @@ def run():
     parser.add_argument("--start", help="UTC ISO start")
     parser.add_argument("--end", help="UTC ISO end")
     parser.add_argument("--latest", action="store_true", help="Last 90 min")
-    parser.add_argument("--max-files", type=int, default=6)
+    parser.add_argument("--max-files", type=int, default=72, help="Maximum scans to process; 0 means all, capped at 96")
     parser.add_argument("--range-km",type=int,default=160,help="Radar radius to render in km (80–230); native gates preserved")
     parser.add_argument("--pixels",type=int,default=2300,help="PNG width/height in pixels (1400–2800)")
     args = parser.parse_args()
@@ -131,7 +131,7 @@ def run():
         start, end = utc(args.start), utc(args.end)
     if end <= start or end - start > dt.timedelta(hours=6):
         parser.error("Time range must be greater than 0 and at most 6 hours")
-    limit = min(max(args.max_files, 1), 24)
+    limit = min(max(args.max_files if args.max_files > 0 else 96, 1), 96)
     render_range=int(np.clip(args.range_km,80,230))
     render_pixels=int(np.clip(args.pixels,1400,2800))
     client = boto3.client("s3", region_name="us-east-1", config=Config(signature_version=UNSIGNED))
@@ -164,7 +164,7 @@ def run():
     existing = {(f["site"],f["time"]):f for f in old.get("frames", [])}
     for f in frames:
         existing[(f["site"],f["time"])] = f
-    merged = sorted(existing.values(),key=lambda f:f["time"])[-180:]
+    merged = sorted(existing.values(),key=lambda f:f["time"])[-500:]
     manifest_path.write_text(json.dumps({"version":1,"updated":dt.datetime.now(dt.timezone.utc).isoformat(),
                                          "frames":merged},indent=2)+"\n")
     print(f"Published {len(frames)} Level II image(s) to {manifest_path}",flush=True)
