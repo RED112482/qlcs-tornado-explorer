@@ -141,3 +141,16 @@ Use **Load time-matched RAP** in the sidebar, or import a JSON profile. Imported
 The Level II renderer now requests a 160-km radius and 2300×2300 image to preserve finer-scale native reflectivity gates. Its input is the genuine Unidata NEXRAD Level II raw volume. The browser displays a projected PNG generated from those gates; it does not itself decode AR2V files. Updated images only appear after **Process NEXRAD Level II** completes successfully and commits the image/manifest files.
 
 These research-oriented red/green zones are not calibrated tornado probabilities. The model sampling does not verify actual UDCZ convergence or mesovortex formation.
+
+
+## v0.8 – QTor explanations, freehand tracing and spatial RAP wind-barb grid
+
+- Every major analysis input and display control has a contextual **?** hover/focus explanation or native input hover title.
+- **Freehand:** turn on ✎ Freehand, hold the mouse button and trace the convective line, release to finish. The previous line is replaced; the standard editable Leaflet Draw polyline remains available.
+- **Green indicates the *larger experimental QTor-inspired relative index***, while **red indicates a smaller index**. Red does **not** mean tornadoes cannot happen; green is **not** a calibrated tornado probability. The downstream red/green shapes are illustrative motion projections, not verified paths or geographic tornado odds.
+- **Britt et al. research framework:** 0–3 km line-normal shear × 0–1 km line-parallel shear × conditional tortuosity enhancement, with the individual shear terms normalized by 10 and 8 m/s and bounded at 0.5–3, a positive line-normal contribution required, and a conditional bowing enhancement when tortuosity exceeds the selected threshold. The 40 km forward ribbon represents the intended analysis neighborhood, **not yet a full QTor implementation** because winds used for the line score remain a site-representative profile.
+- **Spatial archived RAP grid:** `scripts/process_rap.py` also samples NOAA RAP F00 pressure-level winds/height and 10-m wind at independently selected nearest model grid points, interpolating each point's 1/3 km AGL winds in vector space using its **local** model terrain. The resulting `data/rap-grid.json` for **KHDC 2024-06-04 21Z** contains **121 model-sampled locations** over a roughly 250 km × 250 km plane. Barbs are meteorological wind-FROM barbs with 50/10/5 kt flags/ticks. Select 10 m, 1 km, 3 km or all three and adjust map grid thinning.
+- If spatial grid data do not exist for the current site/UTC time, the display switches to **explicitly labeled uniform representative winds repeated at a map grid**. Manual wind overrides likewise disable interpreting the barbs as untouched spatial RAP input.
+- **Not a UDCZ detector:** the traced reflectivity edge remains a user-selected proxy, and the index is not an operational warning decision tool. Near-storm inflow sampling and spatially varying QTor scores at each drawn line segment require further implementation and validation.
+
+The repo includes [the actual spatial RAP field file](data/rap-grid.json) and [the verified site profile](data/rap.json).
