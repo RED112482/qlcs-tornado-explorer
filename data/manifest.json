@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-11-07T09:46:51.518411+00:00",
+  "updated": "2026-11-07T10:08:44.823677+00:00",
   "frames": [
     {
       "site": "KHDC",
@@ -8,18 +8,41 @@
       "url": "./data/KHDC/20240604_210037.png",
       "bounds": [
         [
-          26.374685953750273,
-          -95.21981437996115
+          29.068026268144795,
+          -92.09226611479936
         ],
         [
-          34.66332914136873,
-          -85.59505536974066
+          31.970760382269766,
+          -88.72253822760526
         ]
       ],
       "elevation_deg": 0.31,
       "field": "reflectivity",
+      "render_radius_km": 160,
+      "image_pixels": 2300,
       "source": "Unidata NEXRAD Level II",
       "s3_key": "2024/06/04/KHDC/KHDC20240604_210037_V06"
+    },
+    {
+      "site": "KHDC",
+      "time": "2024-06-04T21:08:32Z",
+      "url": "./data/KHDC/20240604_210832.png",
+      "bounds": [
+        [
+          29.06802538409629,
+          -92.092266241678
+        ],
+        [
+          31.970760382269766,
+          -88.72253822760526
+        ]
+      ],
+      "elevation_deg": 0.31,
+      "field": "reflectivity",
+      "render_radius_km": 160,
+      "image_pixels": 2300,
+      "source": "Unidata NEXRAD Level II",
+      "s3_key": "2024/06/04/KHDC/KHDC20240604_210832_V06"
     },
     {
       "site": "KHDC",
@@ -27,18 +50,41 @@
       "url": "./data/KHDC/20240604_211627.png",
       "bounds": [
         [
-          26.37468511918408,
-          -95.21974413613965
+          29.06802597020581,
+          -92.09226584954317
         ],
         [
-          34.66332464840198,
-          -85.59505323240852
+          31.970758865044385,
+          -88.72253809306068
         ]
       ],
       "elevation_deg": 0.31,
       "field": "reflectivity",
+      "render_radius_km": 160,
+      "image_pixels": 2300,
       "source": "Unidata NEXRAD Level II",
       "s3_key": "2024/06/04/KHDC/KHDC20240604_211627_V06"
+    },
+    {
+      "site": "KHDC",
+      "time": "2024-06-04T21:24:22Z",
+      "url": "./data/KHDC/20240604_212422.png",
+      "bounds": [
+        [
+          29.068026268144795,
+          -92.0922655689552
+        ],
+        [
+          31.970759785438503,
+          -88.72253865423662
+        ]
+      ],
+      "elevation_deg": 0.31,
+      "field": "reflectivity",
+      "render_radius_km": 160,
+      "image_pixels": 2300,
+      "source": "Unidata NEXRAD Level II",
+      "s3_key": "2024/06/04/KHDC/KHDC20240604_212422_V06"
     },
     {
       "site": "KHDC",
@@ -46,16 +92,18 @@
       "url": "./data/KHDC/20240604_213217.png",
       "bounds": [
         [
-          26.374684293738767,
-          -95.21975084473992
+          29.06802567552298,
+          -92.0922655689552
         ],
         [
-          34.663326475376074,
-          -85.59505323240852
+          31.97075948199342,
+          -88.72253783547043
         ]
       ],
       "elevation_deg": 0.31,
       "field": "reflectivity",
+      "render_radius_km": 160,
+      "image_pixels": 2300,
       "source": "Unidata NEXRAD Level II",
       "s3_key": "2024/06/04/KHDC/KHDC20240604_213217_V06"
     }
