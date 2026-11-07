@@ -108,7 +108,7 @@ def write_rap_spatial_grid(groups,site,cycle,origin_lat,origin_lon):
     entries={(x.get("site"),x.get("valid_time")):x for x in previous.get("grids",[])}
     entries[(site,timestamp)]=entry
     path.parent.mkdir(exist_ok=True)
-    path.write_text(json.dumps({"grids":sorted(entries.values(),key=lambda x:x["valid_time"])[-12:]},indent=2)+"\\n")
+    path.write_text(json.dumps({"grids":sorted(entries.values(),key=lambda x:x["valid_time"])[-12:]},indent=2)+"\n")
     print("Published actual RAP spatial wind grid with",len(points),"locations at",timestamp,flush=True)
 
 def main():
