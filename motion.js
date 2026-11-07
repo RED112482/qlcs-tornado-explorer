@@ -30,7 +30,7 @@
      if(Date.parse(item.time)<=Date.parse(A.time)){$('motionCaptureStatus').textContent='Scan B must have a later UTC timestamp than Scan A.';return;}
      B=item;
      $('motionCaptureStatus').textContent='A: '+A.time+' → B: '+B.time+' ('+((Date.parse(B.time)-Date.parse(A.time))/60000).toFixed(1)+' min). Local forward vectors are ready.';
-     $('motionMethod').value='twoframe';
+     // Respect the chosen mode; Manual is the default even with two captures.
      compute();
    }
  }
@@ -145,15 +145,29 @@
      const q=geoProject(p,mv,hours);
      now.push(p);future.push(q);vectors.push(mv);
    }
-   // Draw colored conditional envelopes by segment, with uncertainty increasing
-   // in proportion to lead time; never label green/red as tornado probabilities.
+   // Fill ALL the way from the latest traced line (Scan B if captured) to
+   // the projected leading edge, rather than shading just near the endpoint.
+   // Score colors transport CURRENT diagnostic classifications unchanged:
+   // green = higher relative index, red = lower relative index.
+   // These are conditional swept footprints, NOT tornado-risk polygons.
+   const segmentColor=k=>{
+     const value=scoreAt((k-.5)/(sampleCount-1));
+     return value===null?'#4aacc8':value>=threshold?'#35e58a':'#ef726f';
+   };
    for(let k=1;k<sampleCount;k++){
-     const val=scoreAt((k-.5)/(sampleCount-1));
-     const favorable=val!==null&&val>=threshold;
-     const color=val===null?'#82c4ea':favorable?'#35e58a':'#f17770';
-     const a=future[k-1],b=future[k];
-     L.polyline([a,b],{pane:'forecastPane',color,weight:5,opacity:.9,dashArray:'10 6',interactive:false}).addTo(forecast);
-
+     const color=segmentColor(k);
+     L.polygon([now[k-1],now[k],future[k],future[k-1]],{
+       pane:'forecastPane',stroke:false,fillColor:color,fillOpacity:.20,
+       interactive:false
+     }).addTo(forecast);
+   }
+   // Borders trace the full traveled corridor from captured B to projected edge.
+   // Narrow transverse connectors are intentionally only at line ends.
+   L.polyline(future,{pane:'forecastPane',color:'#b5ffe0',weight:3.4,
+     opacity:1,dashArray:'9 5',interactive:false}).addTo(forecast);
+   for(const edge of [0,sampleCount-1]){
+     L.polyline([now[edge],future[edge]],{pane:'forecastPane',color:'#b5ffe0',
+       weight:1.6,opacity:.75,dashArray:'7 6',interactive:false}).addTo(forecast);
    }
    // One coherent uncertainty ribbon following the SHAPE of Scan B, not
    // separate segment rectangles whose differing azimuths form giant wedges.
@@ -169,7 +183,7 @@
      }
      L.polygon([...outer,...inner.reverse()],{
        pane:'forecastPane',color:'#d8e8ee',weight:1,opacity:.25,
-       fillColor:'#80b7c8',fillOpacity:.055,interactive:false
+       fillColor:'#80b7c8',fillOpacity:.022,interactive:false
      }).addTo(forecast);
    }
    // Draw intermediate projected positions every 30 minutes for a Warngen-like
@@ -194,9 +208,9 @@
      icon:L.divIcon({className:'motion-hour-label final',
        html:'<span>+'+hours.toFixed(1)+'h</span>',iconSize:[48,24],iconAnchor:[0,12]})
    }).addTo(forecast);
-   const tickEvery=9;
+   const tickEvery=10;
    for(let k=0;k<sampleCount;k+=tickEvery){
-     L.polyline([now[k],future[k]],{pane:'forecastPane',color:'#ffe46e',weight:2,opacity:.88,dashArray:'6 5',interactive:false}).addTo(forecast);
+     L.polyline([now[k],future[k]],{pane:'forecastPane',color:'#ffe46e',weight:1.8,opacity:.75,dashArray:'6 5',interactive:false}).addTo(forecast);
    }
    if(derived){
      $('motionForecastStatus').textContent='A→B '+(derived.dt*60).toFixed(1)+' min; dominant translation '+derived.dominant.speed.toFixed(0)+' kt toward '+derived.dominant.dir.toFixed(0)+'°. Scan B shape preserved '+$('shapeLock').value+'%; local variations smoothed and limited. +'+hours.toFixed(1)+' h projection; schematic envelope ±'+width.toFixed(0)+' km (max 16 km). NOT a probability forecast.';
@@ -207,7 +221,7 @@
  $('captureA').onclick=()=>capture('A');
  $('captureB').onclick=()=>capture('B');
  $('calculateMotion').onclick=compute;
- $('resetMotion').onclick=()=>{A=null;B=null;forecast.clearLayers();previous.clearLayers();$('motionCaptureStatus').textContent='Captures cleared. Draw a leading edge and save Scan A.';$('motionForecastStatus').textContent='Two-frame motion not yet calculated.';};
+ $('resetMotion').onclick=()=>{A=null;B=null;$('forecastHours').value='1';$('motionMethod').value='manual';$('forecastHoursValue').textContent='1.0 h';forecast.clearLayers();previous.clearLayers();$('motionCaptureStatus').textContent='Captures cleared. Draw a leading edge and save Scan A.';$('motionForecastStatus').textContent='Two-frame motion not yet calculated.';};
  for(const id of ['motionMethod','motionSpeedKt','forecastHours','forecastSpread','shapeLock','showForecast'])
    $(id).addEventListener('input',compute);
  // Update on redraw/environment adjustments but do NOT overwrite captured shapes.
@@ -218,5 +232,9 @@
    $('scanForward').click();
    $('motionCaptureStatus').textContent='Moved to next available radar scan. Use Freehand or Polyline to redraw its leading edge, then capture Scan B.';
  };
+ // Explicit defaults, independent of whether the user has captured any scans.
+ $('forecastHours').value='1';
+ $('motionMethod').value='manual';
+ $('forecastHoursValue').textContent='1.0 h';
  window.qlcsMotion={compute};
 })();
