@@ -5,3 +5,4 @@ arm_pyart>=1.19
 herbie-data>=2024.3
 cfgrib>=0.9.10
 eccodes>=1.7
+pyproj>=3.6
