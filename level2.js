@@ -173,5 +173,13 @@
  fetch('./data/rap.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(data=>{
    if(data){rapProfiles=Array.isArray(data.profiles)?data.profiles:[data];if(rapProfiles.length)applyRap(rapProfiles[0]);}
  }).catch(()=>{});
- getManifest().then(()=>{refresh();calc();});
+ getManifest().then(m=>{
+   const count=(m.frames||[]).length;
+   if(!count){
+     source.value='level3';
+     $('level2Info').textContent='Level II has 0 processed frames. Showing the independent high-resolution IEM radar feed until decoded Level II scans are published.';
+     $('scanStatus').textContent='Live radar: latest IEM scan; archives: all times in UTC/Zulu.';
+   }
+   refresh();calc();
+ });
 })();
