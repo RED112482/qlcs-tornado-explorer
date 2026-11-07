@@ -117,12 +117,12 @@
    let threshold=+$('threshold').value;const motion=+$('motion').value;
    for(let i=1;i<rows.length;i++){
      const prev=rows[i-1],cur=rows[i],val=(prev.score+cur.score)/2,hot=val>=threshold;
-     const color=hot?'#f2645d':'#48ca85';
+     const color=hot?'#38e58c':'#ed6665';
      L.polyline([prev.point,cur.point],{color,weight:5,opacity:.94,interactive:false}).addTo(windMarkerLayer);
      if($('showFlare').checked){
        const shift=hot?26:15;
        const a=dest(prev.point,motion,shift),b=dest(cur.point,motion,shift);
-       L.polygon([prev.point,cur.point,b,a],{stroke:false,fillColor:color,fillOpacity:hot?.23:.12,interactive:false}).addTo(windMarkerLayer);
+       L.polygon([prev.point,cur.point,b,a],{stroke:false,fillColor:color,fillOpacity:hot?.21:.10,interactive:false}).addTo(windMarkerLayer);
      }
    }
    if($('showNormals').checked)for(let i=2;i<rows.length;i+=Math.max(3,Math.round(22/Math.max(1,+$('step').value)))){
@@ -136,17 +136,52 @@
      const a=dest(q,(motion+155)%360,4),b=dest(q,(motion+205)%360,4);
      L.polyline([a,q,b],{color:'#ffe06b',weight:2.3,opacity:.95,interactive:false}).addTo(windMarkerLayer);
    }
-   if($('showBarbs').checked){
-     const m=rows[Math.floor(rows.length/2)];const ids=[['0',20,'#c9f6fa'],['1',33,'#ffe18a'],['3',46,'#e3afff']];
-     for(const [level,dist,color]of ids){
-       const p=dest(m.point,m.normal,dist),direction=+$('dir'+level).value,speed=+$('spd'+level).value;
-       const html='<div class="wx-barb">'+pennantBarb(speed,direction,color)+'<span>'+level+' km · '+speed+' kt</span></div>';
-       L.marker(p,{interactive:false,icon:L.divIcon({className:'',html,iconSize:[90,75],iconAnchor:[40,47]})}).addTo(windMarkerLayer);
+ }
+ // A regular latitude/longitude-derived ground-distance grid. Since we only
+ // ingest a single representative RAP wind profile, these are REPEATED site winds:
+ // their identical direction/speed at each point must NOT be mistaken for a model grid.
+ map.createPane('windGridPane');map.getPane('windGridPane').style.zIndex=460;
+ map.getPane('windGridPane').style.pointerEvents='none';
+ const barbGrid=L.layerGroup().addTo(map);
+ function renderBarbGrid(){
+   barbGrid.clearLayers();
+   if(!$('showBarbs').checked)return;
+   const chosen=$('barbLevels').value,spacing=Math.max(25,Number($('barbSpacing').value)||55);
+   $('barbSpacingValue').textContent=String(spacing);
+   const bounds=map.getBounds();
+   if(!bounds.isValid())return;
+   const south=Math.max(-85,bounds.getSouth()),north=Math.min(85,bounds.getNorth()),
+         west=Math.max(-180,bounds.getWest()),east=Math.min(180,bounds.getEast());
+   const midLat=(south+north)/2,latStep=spacing/111.2,
+         lonStep=spacing/(111.2*Math.max(.22,Math.cos(midLat*Math.PI/180)));
+   const maxGrid=75;
+   const levels=chosen==='all'?['0','1','3']:[chosen];
+   const colors={'0':'#d8f2ff','1':'#ffdc79','3':'#d4abff'};
+   let count=0;
+   for(let lat=Math.ceil(south/latStep)*latStep;lat<=north&&count<maxGrid;lat+=latStep){
+     for(let lon=Math.ceil(west/lonStep)*lonStep;lon<=east&&count<maxGrid;lon+=lonStep){
+       // 60px full-size barbs are legible at the default 55 km spacing;
+       // each level uses the same geolocation, horizontally grouped in a cell.
+       const markup=levels.map(level=>{
+         const speed=Number($('spd'+level).value),from=Number($('dir'+level).value);
+         const svg=pennantBarb(speed,from,colors[level]);
+         const lbl=level==='0'?'10m':level+'km';
+         return '<div class="barb-unit" title="'+lbl+' AGL wind FROM '+from+'° at '+speed+' kt">'+svg+'<small>'+lbl+'</small></div>';
+       }).join('');
+       const html='<div class="barb-cluster '+(levels.length===3?'barb-triplet':'')+'">'+markup+'</div>';
+       const width=levels.length===3?114:45;
+       L.marker([lat,lon],{pane:'windGridPane',interactive:false,keyboard:false,
+         icon:L.divIcon({className:'wind-grid-icon',html,iconSize:[width,65],
+         iconAnchor:[width/2,33]})}).addTo(barbGrid);
+       count++;
      }
    }
  }
- calc=function(){baseCalc();advancedDraw();};
- ['showBarbs','showNormals','showMotion','showFlare'].forEach(id=>$(id).addEventListener('change',advancedDraw));
+ calc=function(){baseCalc();advancedDraw();renderBarbGrid();};
+ ['showNormals','showMotion','showFlare'].forEach(id=>$(id).addEventListener('change',advancedDraw));
+ ['showBarbs','barbLevels','barbSpacing'].forEach(id=>$(id).addEventListener('input',renderBarbGrid));
+ map.on('moveend',renderBarbGrid);
+ renderBarbGrid();
  // RAP import is data provenance; changing a wind input switches to manual override.
  function setWindSource(msg){$('windSource').textContent=msg;}
  function applyRap(profile){
