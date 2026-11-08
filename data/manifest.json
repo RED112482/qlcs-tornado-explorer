@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-11-08T06:54:25.411753+00:00",
+  "updated": "2026-11-08T06:59:11.656123+00:00",
   "frames": [
     {
       "site": "KHDC",
@@ -55,6 +55,22 @@
       ],
       "elevation_deg": 0.31,
       "field": "reflectivity",
+      "velocity_url": "./data/KHDC/20240604_210832_vel.png",
+      "velocity_bounds": [
+        [
+          29.068019366700668,
+          -92.09226256494557
+        ],
+        [
+          31.970764431000937,
+          -88.72253759321208
+        ]
+      ],
+      "velocity_elevation_deg": 0.31,
+      "velocity_units": "kt",
+      "velocity_aliased": true,
+      "velocity_error": null,
+      "is_live": false,
       "render_radius_km": 160,
       "image_pixels": 2300,
       "source": "Unidata NEXRAD Level II",
@@ -113,6 +129,22 @@
       ],
       "elevation_deg": 0.31,
       "field": "reflectivity",
+      "velocity_url": "./data/KHDC/20240604_212422_vel.png",
+      "velocity_bounds": [
+        [
+          29.06802046565746,
+          -92.09226446616033
+        ],
+        [
+          31.970763681608165,
+          -88.72253725857202
+        ]
+      ],
+      "velocity_elevation_deg": 0.31,
+      "velocity_units": "kt",
+      "velocity_aliased": true,
+      "velocity_error": null,
+      "is_live": false,
       "render_radius_km": 160,
       "image_pixels": 2300,
       "source": "Unidata NEXRAD Level II",
@@ -128,12 +160,28 @@
           -92.0922655689552
         ],
         [
-          31.97075948199342,
+          31.970759481993415,
           -88.72253783547043
         ]
       ],
       "elevation_deg": 0.31,
       "field": "reflectivity",
+      "velocity_url": "./data/KHDC/20240604_213217_vel.png",
+      "velocity_bounds": [
+        [
+          29.06802316990404,
+          -92.09226511932627
+        ],
+        [
+          31.970765150216963,
+          -88.7225362649856
+        ]
+      ],
+      "velocity_elevation_deg": 0.31,
+      "velocity_units": "kt",
+      "velocity_aliased": true,
+      "velocity_error": null,
+      "is_live": false,
       "render_radius_km": 160,
       "image_pixels": 2300,
       "source": "Unidata NEXRAD Level II",
