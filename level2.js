@@ -156,7 +156,6 @@
  // This IS NOT a calibrated likelihood. QTor terms are a simplified prototype.
  const clamp01=v=>Math.max(0,Math.min(1,v));
  const qtorScale=v=>clamp01((Number(v)||0)/6); // fixed 0–6 diagnostic color scale
- const tortScale=r=>clamp01(((Number(r)||1)-1)/.12);
  function tortRamp(t){
    t=clamp01(t);
    const stops=[[32,104,67],[91,218,95],[67,244,197]];
@@ -178,7 +177,7 @@
    const eligible=q>0;
    const mode=$('gradientMode').value;
    const qn=qtorScale(q),tn=clamp01(t);
-   const value=mode==='tortuosity'?tn:mode==='weighted'?(eligible?.7*qn+.3*tn:0):qn;
+   const value=mode==='tortuosity'?tn:mode==='weighted'?(eligible?(0.7*qn+0.3*tn):0):qn;
    const color=mode==='tortuosity'
       ?(eligible?tortRamp(tn):'#687684')
       :colorRamp(value);
