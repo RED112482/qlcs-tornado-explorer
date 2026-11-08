@@ -4,6 +4,7 @@ on:
     types: [opened]
 permissions:
   contents: write
+  pages: write
   issues: write
 concurrency:
   group: qlcs-level2-issue
@@ -55,6 +56,15 @@ jobs:
             sleep $((n * 2))
           done
           exit 1
+      - name: Request Pages rebuild after data publication
+        if: success()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          echo "Asking GitHub Pages to rebuild after GITHUB_TOKEN-generated data commit."
+          gh api --method POST "/repos/$REPO/pages/builds"
       - name: Report completed archive request
         if: success()
         env:
