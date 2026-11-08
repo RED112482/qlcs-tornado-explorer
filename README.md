@@ -261,3 +261,21 @@ This is on-demand **processing via GitHub authentication**, not instant GRIB dec
 - **Mosaics**: Unidata composites and MRMS are good for overview, but a stitched reflectivity mosaic does not preserve each radar's native low-level radial velocity and geometry for QLCS mesovortex analysis.
 
 AWS infrastructure is **not deployed** by this change: a cloud account, cost/usage controls, API endpoint and storage policy are still needed. GitHub-only issue workflows remain the working intermediate solution. References: [AWS NEXRAD open data](https://registry.opendata.aws/noaa-nexrad/), [Unidata Level II access](https://www.unidata.ucar.edu/data/radar-data), and [Herbie RAP historical retrieval](https://herbie.readthedocs.io/en/latest/gallery/noaa_models/rap.html).
+
+
+## v1.7 — raw Level II velocity palette and experimental local mesovortex-motion vectors
+
+**Velocity quick toggle.** While a **genuine processed Level II** scan with **both moments** is loaded, press the keyboard **period (.)**, **numpad decimal/Del**, or **Delete** to switch Base Reflectivity (dBZ) ⇄ Base Radial Velocity (kt). Input fields and text editing ignore the shortcut. The selector remains available for mouse users. Legacy reflectivity-only frames cannot toggle until velocity is decoded.
+
+**Velocity colors.** The PNG renderer now uses a **21-stop color scale sampled from the user-supplied image**, spanning **−200 to +200 kt** and matching its inbound (negative) green/blue and outbound (positive) red/magenta/orange appearance. The map legend uses the same colors. **Previously processed velocity images are not recolored automatically**: reprocess those archive frames (or future scans) to use the new palette. Raw radar velocities remain un-dealiased and can fold at the Nyquist velocity; the ±200 kt legend is only a presentation scale, not a claim that real observed velocities occupy the full range.
+
+**Mesovortex Motion Scenarios.** A collapsible panel allows:
+- Toggle on **click-on-the-line** vectors and optionally plot 3/5/7/9 evenly spaced scenario arrows along the leading edge.
+- **Manual deviation**: add a signed clockwise angle to the user-entered QLCS system-motion direction, and set a hypothetical circulation speed in knots.
+- **0–1 km steering**: blend QLCS translation with the mean of available 10-m and 1-km **wind-TOWARD vectors**, using user-controlled weights (no established physical regression coefficient).
+- **Illustrative northern-flank drift**: mark the bow apex on the drawn line, then add a user-controlled component toward the northern end of the line. The increment is tapered with distance from the marked apex (a geometric sensitivity heuristic, not an empirically supported forecast equation).
+- Choose a 5–20 minute arrow lead, click a particular point for a labeled arrow, and see multiple arrows in magenta versus the original **yellow QLCS translation**. The existing single Clear button clears all vectors alongside the track.
+
+**Interpretation:** Mesovortices often develop near/north of a bow apex and may move northward *relative to the bow*, but vortex migration is case-dependent and may not coincide with tornado motion. No available result establishes an operational formula to calculate tornado direction solely from bow geometry and low-level RAP winds. For warning decisions use repeated lowest-level velocity scans, couplet tracking, line segment evolution, tornado debris signatures and official WFO methods. The scenario layer is **research/training only**, not an operational tornado warning projection.
+
+References: [Weisman and Trapp 2003](https://journals.ametsoc.org/view/journals/mwre/131/11/1520-0493_2003_131_2779_lmwsla_2.0.co_2.xml); [Atkins et al. 2004 bow-echo vortices](https://journals.ametsoc.org/view/journals/mwre/132/9/1520-0493_2004_132_2224_vsaewb_2.0.co_2.xml); [NWS QLCS reference sheets](https://www.weather.gov/media/sgf/research/TWIP_QLCS_Reference_Sheets.pdf).
