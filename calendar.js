@@ -97,8 +97,9 @@
    const url=new URL(ISSUE_URL);
    url.searchParams.set('title',title);
    url.searchParams.set('body',body.replaceAll('\\n','\n'));
-   const tab=window.open(url.toString(),'_blank','noopener');
-   if(!tab){window.location.href=url.toString();}
+   const tab=window.open(url.toString(),'_blank');
+   if(tab)tab.opener=null; // prevent GitHub window accessing this app
+   else window.location.href=url.toString();
    $('level2ProcessStatus').textContent='GitHub issue prepared. Sign in and click Submit new issue to begin Level II processing. The Explorer will check the manifest periodically for these scans.';
    if(monitor)clearInterval(monitor);
    monitor=setInterval(checkPublished,30000);
