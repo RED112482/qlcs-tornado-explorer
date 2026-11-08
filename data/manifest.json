@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-11-08T10:50:32.424201+00:00",
+  "updated": "2026-11-08T13:00:23.222117+00:00",
   "frames": [
     {
       "site": "KHDC",
@@ -445,6 +445,302 @@
       "image_pixels": 2300,
       "source": "Unidata NEXRAD Level II",
       "s3_key": "2024/06/04/KHDC/KHDC20240604_225224_V06"
+    },
+    {
+      "site": "KMOB",
+      "time": "2022-03-31T03:06:30Z",
+      "url": "./data/KMOB/20220331_030630.png",
+      "bounds": [
+        [
+          29.228037972256597,
+          -89.92744948608612
+        ],
+        [
+          32.130438656066325,
+          -86.55254641052693
+        ]
+      ],
+      "elevation_deg": 0.53,
+      "field": "reflectivity",
+      "velocity_url": "./data/KMOB/20220331_030630_vel.png",
+      "velocity_bounds": [
+        [
+          29.22803349262954,
+          -89.92744741513816
+        ],
+        [
+          32.13044085561138,
+          -86.55254375843424
+        ]
+      ],
+      "velocity_elevation_deg": 0.53,
+      "velocity_units": "kt",
+      "velocity_aliased": true,
+      "velocity_error": null,
+      "is_live": false,
+      "render_radius_km": 160,
+      "image_pixels": 2300,
+      "source": "Unidata NEXRAD Level II",
+      "s3_key": "2022/03/31/KMOB/KMOB20220331_030630_V06"
+    },
+    {
+      "site": "KMOB",
+      "time": "2022-03-31T03:13:17Z",
+      "url": "./data/KMOB/20220331_031317.png",
+      "bounds": [
+        [
+          29.228035909870716,
+          -89.92745070047964
+        ],
+        [
+          32.13043978266243,
+          -86.55254463500346
+        ]
+      ],
+      "elevation_deg": 0.53,
+      "field": "reflectivity",
+      "velocity_url": "./data/KMOB/20220331_031317_vel.png",
+      "velocity_bounds": [
+        [
+          29.228032991275654,
+          -89.92744878675717
+        ],
+        [
+          32.13044212135621,
+          -86.55254349306394
+        ]
+      ],
+      "velocity_elevation_deg": 0.53,
+      "velocity_units": "kt",
+      "velocity_aliased": true,
+      "velocity_error": null,
+      "is_live": false,
+      "render_radius_km": 160,
+      "image_pixels": 2300,
+      "source": "Unidata NEXRAD Level II",
+      "s3_key": "2022/03/31/KMOB/KMOB20220331_031317_V06"
+    },
+    {
+      "site": "KMOB",
+      "time": "2022-03-31T03:20:03Z",
+      "url": "./data/KMOB/20220331_032003.png",
+      "bounds": [
+        [
+          29.22800569815363,
+          -89.92748460188832
+        ],
+        [
+          32.13047108024013,
+          -86.55250239853588
+        ]
+      ],
+      "elevation_deg": 0.48,
+      "field": "reflectivity",
+      "velocity_url": "./data/KMOB/20220331_032003_vel.png",
+      "velocity_bounds": [
+        [
+          29.22800224883279,
+          -89.92748387173224
+        ],
+        [
+          32.13047054375409,
+          -86.55250780370211
+        ]
+      ],
+      "velocity_elevation_deg": 0.48,
+      "velocity_units": "kt",
+      "velocity_aliased": true,
+      "velocity_error": null,
+      "is_live": false,
+      "render_radius_km": 160,
+      "image_pixels": 2300,
+      "source": "Unidata NEXRAD Level II",
+      "s3_key": "2022/03/31/KMOB/KMOB20220331_032003_V06"
+    },
+    {
+      "site": "KMOB",
+      "time": "2022-03-31T03:26:29Z",
+      "url": "./data/KMOB/20220331_032629.png",
+      "bounds": [
+        [
+          29.228004578223427,
+          -89.92748477483012
+        ],
+        [
+          32.130438656066325,
+          -86.5525087077367
+        ]
+      ],
+      "elevation_deg": 0.48,
+      "field": "reflectivity",
+      "velocity_url": "./data/KMOB/20220331_032629_vel.png",
+      "velocity_bounds": [
+        [
+          29.228003510382713,
+          -89.927483483621
+        ],
+        [
+          32.1304713434536,
+          -86.55250830005392
+        ]
+      ],
+      "velocity_elevation_deg": 0.48,
+      "velocity_units": "kt",
+      "velocity_aliased": true,
+      "velocity_error": null,
+      "is_live": false,
+      "render_radius_km": 160,
+      "image_pixels": 2300,
+      "source": "Unidata NEXRAD Level II",
+      "s3_key": "2022/03/31/KMOB/KMOB20220331_032629_V06"
+    },
+    {
+      "site": "KMOB",
+      "time": "2022-03-31T03:33:04Z",
+      "url": "./data/KMOB/20220331_033304.png",
+      "bounds": [
+        [
+          29.22800430637985,
+          -89.92748494393304
+        ],
+        [
+          32.130466729675646,
+          -86.55250830005392
+        ]
+      ],
+      "elevation_deg": 0.48,
+      "field": "reflectivity",
+      "velocity_url": "./data/KMOB/20220331_033304_vel.png",
+      "velocity_bounds": [
+        [
+          29.22800249463157,
+          -89.92748424448803
+        ],
+        [
+          32.13047236277733,
+          -86.55250803460206
+        ]
+      ],
+      "velocity_elevation_deg": 0.48,
+      "velocity_units": "kt",
+      "velocity_aliased": true,
+      "velocity_error": null,
+      "is_live": false,
+      "render_radius_km": 160,
+      "image_pixels": 2300,
+      "source": "Unidata NEXRAD Level II",
+      "s3_key": "2022/03/31/KMOB/KMOB20220331_033304_V06"
+    },
+    {
+      "site": "KMOB",
+      "time": "2022-03-31T03:39:40Z",
+      "url": "./data/KMOB/20220331_033940.png",
+      "bounds": [
+        [
+          29.22800430637985,
+          -89.92748615855473
+        ],
+        [
+          32.13048663964306,
+          -86.55254502705944
+        ]
+      ],
+      "elevation_deg": 0.48,
+      "field": "reflectivity",
+      "velocity_url": "./data/KMOB/20220331_033940_vel.png",
+      "velocity_bounds": [
+        [
+          29.228004037791877,
+          -89.92748328380709
+        ],
+        [
+          32.13047236277733,
+          -86.55250795379631
+        ]
+      ],
+      "velocity_elevation_deg": 0.48,
+      "velocity_units": "kt",
+      "velocity_aliased": true,
+      "velocity_error": null,
+      "is_live": false,
+      "render_radius_km": 160,
+      "image_pixels": 2300,
+      "source": "Unidata NEXRAD Level II",
+      "s3_key": "2022/03/31/KMOB/KMOB20220331_033940_V06"
+    },
+    {
+      "site": "KMOB",
+      "time": "2022-03-31T03:46:26Z",
+      "url": "./data/KMOB/20220331_034626.png",
+      "bounds": [
+        [
+          29.22800872587052,
+          -89.92748494393304
+        ],
+        [
+          32.13046735334012,
+          -86.55250860005741
+        ]
+      ],
+      "elevation_deg": 0.48,
+      "field": "reflectivity",
+      "velocity_url": "./data/KMOB/20220331_034626_vel.png",
+      "velocity_bounds": [
+        [
+          29.22800430637985,
+          -89.92748494393304
+        ],
+        [
+          32.130468853823515,
+          -86.55250773441371
+        ]
+      ],
+      "velocity_elevation_deg": 0.48,
+      "velocity_units": "kt",
+      "velocity_aliased": true,
+      "velocity_error": null,
+      "is_live": false,
+      "render_radius_km": 160,
+      "image_pixels": 2300,
+      "source": "Unidata NEXRAD Level II",
+      "s3_key": "2022/03/31/KMOB/KMOB20220331_034626_V06"
+    },
+    {
+      "site": "KMOB",
+      "time": "2022-03-31T03:53:13Z",
+      "url": "./data/KMOB/20220331_035313.png",
+      "bounds": [
+        [
+          29.22797827059744,
+          -89.92752086504258
+        ],
+        [
+          32.13049494635103,
+          -86.55246815146404
+        ]
+      ],
+      "elevation_deg": 0.44,
+      "field": "reflectivity",
+      "velocity_url": "./data/KMOB/20220331_035313_vel.png",
+      "velocity_bounds": [
+        [
+          29.227974259604004,
+          -89.92751855842108
+        ],
+        [
+          32.13050084781705,
+          -86.5524738931429
+        ]
+      ],
+      "velocity_elevation_deg": 0.44,
+      "velocity_units": "kt",
+      "velocity_aliased": true,
+      "velocity_error": null,
+      "is_live": false,
+      "render_radius_km": 160,
+      "image_pixels": 2300,
+      "source": "Unidata NEXRAD Level II",
+      "s3_key": "2022/03/31/KMOB/KMOB20220331_035313_V06"
     }
   ]
 }
