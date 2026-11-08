@@ -1,0 +1,37 @@
+name: QLCS client and processing syntax checks
+on:
+  push:
+    branches: [main]
+    paths:
+      - '*.js'
+      - 'scripts/**'
+      - '.github/workflows/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  syntax-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile Python processing scripts
+        run: python -m py_compile scripts/process_level2.py scripts/parse_level2_issue.py scripts/process_rap.py
+      - name: Check browser JavaScript syntax
+        run: |
+          for file in app.js level2.js calendar.js interactions.js motion.js; do
+            node --check "$file"
+          done
+      - name: Parse GitHub Actions workflow YAML
+        run: |
+          pip install --quiet pyyaml
+          python - <<'PY'
+          import pathlib
+          import yaml
+          for file in pathlib.Path('.github/workflows').glob('*.yml'):
+              yaml.safe_load(file.read_text())
+              print("YAML parsed:", file)
+          PY
