@@ -1,0 +1,79 @@
+name: Process requested RAP environment (GitHub issue)
+on:
+  issues:
+    types: [opened]
+permissions:
+  contents: write
+  issues: write
+  pages: write
+concurrency:
+  group: qlcs-rap-issue
+  cancel-in-progress: false
+jobs:
+  rap-request:
+    # Only owner-authored issues can run downloaded GRIB processing or write files.
+    if: ${{ github.event.issue.user.login == github.repository_owner && startsWith(github.event.issue.title, '[QLCS RAP]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements-rap.txt
+      - name: Validate site and UTC RAP F00 cycle
+        id: request
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: python scripts/parse_rap_issue.py
+      - name: Install RAP requirements
+        run: pip install -r requirements-rap.txt
+      - name: Fetch actual RAP analysis and interpolate AGL winds
+        env:
+          SITE: ${{ steps.request.outputs.site }}
+          CYCLE: ${{ steps.request.outputs.cycle }}
+        run: python scripts/process_rap.py --site "$SITE" --time "$CYCLE"
+      - name: Publish RAP profiles and spatial winds
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/rap.json
+          if [ -f data/rap-grid.json ]; then git add data/rap-grid.json; fi
+          if git diff --cached --quiet; then
+            echo "RAP already cached, no new files"
+            exit 0
+          fi
+          git commit -m "Publish requested RAP environment profile and spatial wind grid"
+          for attempt in 1 2 3 4 5 6 7; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
+      - name: Request GitHub Pages rebuild
+        if: success()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: gh api --method POST "/repos/$REPO/pages/builds"
+      - name: Report successfully completed RAP request
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh issue comment "$ISSUE" --repo "$REPO" --body "✅ RAP F00 profile and optional spatial winds processed. Return to the [QLCS Explorer](https://red112482.github.io/qlcs-tornado-explorer/), select the same radar and UTC scan, then click **Load time-matched RAP** or **Check RAP**."
+          gh issue close "$ISSUE" --repo "$REPO" --reason completed
+      - name: Report unsuccessful RAP lookup
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: gh issue comment "$ISSUE" --repo "$REPO" --body "⚠️ RAP lookup failed. Check the [processing log]($RUN_URL). The requested cycle may be missing from the upstream archive or processing may have failed."
