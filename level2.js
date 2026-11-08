@@ -39,13 +39,23 @@
      $('level2Info').textContent='No processed Level II data for this radar and selected UTC date. The calendar can select any date, but Level II archives must first be decoded through GitHub Actions → Process NEXRAD Level II. Select a processed date above to restore radar.';
      return;
    }
-   level2Overlay=L.imageOverlay(frame.url,frame.bounds,{pane:'radarPane',opacity:Number($('radarOpacity').value)/100,interactive:false,crossOrigin:true}).addTo(map);
-   level2Overlay.once('load',()=>{$('radarStatus').textContent='Level II loaded: '+(frame.elevation_deg??'?')+'°';});
+   const velocity=$('radarMoment').value==='velocity';
+   const url=velocity?frame.velocity_url:frame.url;
+   const bounds=velocity?frame.velocity_bounds:frame.bounds;
+   const elevation=velocity?frame.velocity_elevation_deg:frame.elevation_deg;
+   if(!url||!Array.isArray(bounds)){
+     $('radarStatus').textContent='Velocity not processed for this Level II frame';
+     $('level2Info').textContent='This is a legacy Level II reflectivity-only frame. Reprocess this radar/time through the Level II workflow to generate the corresponding lowest-tilt velocity image. Raw velocity is not dealiased.';
+     $('radarTime').textContent='K'+normSite(frame.site||level2Manifest.site)+' • '+niceTime(frame.time)+' • velocity unavailable';
+     return;
+   }
+   level2Overlay=L.imageOverlay(url,bounds,{pane:'radarPane',opacity:Number($('radarOpacity').value)/100,interactive:false,crossOrigin:true}).addTo(map);
+   level2Overlay.once('load',()=>{$('radarStatus').textContent='Level II '+(velocity?'Velocity':'Reflectivity')+' loaded: '+(elevation??'?')+'°';});
    level2Overlay.once('error',()=>{$('radarStatus').textContent='Level II image missing';$('level2Info').textContent='Manifest exists but radar image failed: '+frame.url;});
    $('radarStatus').textContent='Loading Level II sweep';
-   $('radarTime').textContent='K'+normSite(frame.site||level2Manifest.site)+' • '+niceTime(frame.time)+' • '+Number(frame.elevation_deg||0).toFixed(2)+'° '+(frame.field||'reflectivity');
-   $('level2Info').textContent='Actual decoded Level II sweep • '+(frame.source||'Unidata NEXRAD Level II')+' • '+(frame.render_radius_km||'full')+' km radius • '+(frame.image_pixels||'legacy')+' px raster • '+(frame.elevation_deg??'?')+'° • UTC/Zulu.';
-   $('radarDirect').href=frame.url;$('radarDirect').textContent='Open decoded Level II image';
+   $('radarTime').textContent='K'+normSite(frame.site||level2Manifest.site)+' • '+niceTime(frame.time)+' • '+Number(elevation||0).toFixed(2)+'° '+(velocity?'raw radial velocity (kt; aliased)':'base reflectivity (dBZ)');
+   $('level2Info').textContent='Genuine Level II lowest valid '+(velocity?'velocity':'reflectivity')+' sweep • '+(elevation??'?')+'° • '+(frame.render_radius_km||'full')+' km • '+(frame.image_pixels||'legacy')+' px • '+(velocity?'RAW ALIASED radial velocity, kt':'reflectivity, dBZ')+' • UTC/Zulu.';
+   $('radarDirect').href=url;$('radarDirect').textContent='Open decoded Level II '+(velocity?'velocity':'reflectivity')+' image';
    matchRap(frame.time);renderBarbGrid();
  }
  refresh=function(){
@@ -90,6 +100,7 @@
      await liveFindScans();
    }
  };
+ $('radarMoment').addEventListener('change',()=>{if(source.value==='level2')showLevel2();});
  source.addEventListener('change',async()=>{autoArchiveFallback=false;$('archiveDataNotice').hidden=true;stopPlay();if($('mode').value==='archive')return findScans();if(source.value==='level2')await getManifest();refresh();});
  const originalOpacity=$('radarOpacity').oninput;
  $('radarOpacity').oninput=()=>{if(source.value==='level2'&&level2Overlay)level2Overlay.setOpacity(+$('radarOpacity').value/100);else originalOpacity?.();};
