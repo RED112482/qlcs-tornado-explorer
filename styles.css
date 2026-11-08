@@ -151,3 +151,18 @@
 .archive-actions>button,.archive-action-link{flex:1 1 135px;min-width:0;font:600 11px/1.5 Poppins,Arial,sans-serif;text-align:center;padding:9px 7px;border-radius:7px}
 .archive-action-link{display:flex;justify-content:center;align-items:center;border:1px solid #46788b;background:#203d4e;color:#c1eeff!important;text-decoration:none}
 .archive-action-link:hover{background:#2a5268}
+
+/* v1.1 — compact gradient controls and one clear action */
+.gradient-preview{display:flex;justify-content:space-between;gap:14px;color:#cbe6ee;font-size:10px;line-height:1.4;margin:7px 0 5px}
+.gradient-preview span:last-child{text-align:right}
+.gradient-track{height:13px;width:100%;border:1px solid #738f99;border-radius:9px;
+ background:linear-gradient(90deg,#e2535c,#f4c545,#20d77b);
+ box-shadow:inset 0 1px 3px #0007,0 0 6px #ffffff19;margin:2px 0 9px}
+.divider-space{margin:14px 0;border-top:1px solid #345a6b}
+.fold-qt>summary{background:#214a48!important}
+.fold-qt[open]>summary{background:#21615c!important}
+#clear{background:#56323a;border:1px solid #be828a;color:#ffe6eb;font-weight:700}
+#clear:hover{background:#7d3b46}
+#resetMotion[hidden]{display:none!important}
+#internalDiagnostics[hidden]{display:none!important}
+.leaflet-draw-toolbar a.leaflet-draw-edit-remove{display:none!important}
