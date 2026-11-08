@@ -467,13 +467,27 @@
    calc();save();
  }
  function matchRap(time){
-   if(!rapProfiles.length)return;
    if(manualWindOverride)return;
    const target=Date.parse(time||'');
-   const candidates=rapProfiles.filter(p=>normSite(p.site||'')===normSite($('site').value));
-   const match=candidates.map(p=>({p,d:Math.abs(Date.parse(p.valid_time||p.time||'')-target)})).sort((a,b)=>a.d-b.d)[0];
-   if(match&&match.d<=60*60000)try{applyRap(match.p);}catch(e){console.warn(e);}
-   else if(candidates.length)setWindSource('MANUAL VALUES · No matching RAP cycle within 60 minutes of this radar scan');
+   if(!Number.isFinite(target))return;
+   const site=normSite($('site').value);
+   const candidates=rapProfiles.filter(p=>normSite(p.site||'')===site)
+     .map(p=>({p,d:Math.abs(Date.parse(p.valid_time||p.time||'')-target)}))
+     .filter(x=>Number.isFinite(x.d)).sort((a,b)=>a.d-b.d);
+   const match=candidates[0];
+   if(match&&match.d<=60*60000){
+     try{applyRap(match.p);updateRapRequestUI(false,'Time-matched RAP available for K'+site+'.');}
+     catch(e){console.warn('RAP profile failed validation',e);}
+   }else{
+     // Retain displayed editable values but do not present them as the
+     // new selected case's genuine model environment.
+     rapProfile=null;
+     const cycle=new Date(Math.floor(target/3600000)*3600000).toISOString().slice(0,16)+'Z';
+     setWindSource('NO MATCHING RAP YET · K'+site+' · '+cycle+
+       ' • displayed values are retained placeholders, NOT verified for this UTC case');
+     updateRapRequestUI(true,'No cached RAP F00 profile for K'+site+' at '+cycle+
+       '. Click Load time-matched RAP to recheck, or Retrieve missing RAP to process it on GitHub.');
+   }
  }
  // The current radar scan in archive mode, otherwise the explicitly selected
  // UTC window, or the current UTC hour for live mode. NEVER use a stale
