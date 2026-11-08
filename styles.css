@@ -194,3 +194,10 @@
 .radar-visibility-toggle{background:#153543;border:1px solid #547f8d;border-radius:8px;padding:10px 9px;margin:10px 0;font-weight:700;color:#ddf9ff}
 #favorableFillOpacityValue,#radarOpacityValue{font-variant-numeric:tabular-nums;color:#9bffe0}
 #favorableFillOpacity{accent-color:#20d77b}
+
+/* v1.5 - radar moment and authenticated archive request controls */
+#submitLevel2{background:#215d65;border:1px solid #68bbc8;color:#f3ffff;font-weight:700}
+#submitLevel2:hover{background:#297786}
+#level2ProcessStatus{background:#132c39;border-left:3px solid #65c3cf;padding:9px 11px;border-radius:7px;line-height:1.55}
+#liveLevel2Tools[hidden]{display:none!important}
+#liveLevel2Tools{border:1px solid #507a8e;border-radius:9px;padding:10px;margin:10px 0;background:#102a3a}
