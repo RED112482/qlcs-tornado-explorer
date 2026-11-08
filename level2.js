@@ -168,7 +168,7 @@
  }
  function qtorScale(v){return clamp01((Number(v)||0)/6);}
  map.createPane('gradientPane');
- map.getPane('gradientPane').style.zIndex=470;
+ map.getPane('gradientPane').style.zIndex=450;
  map.getPane('gradientPane').style.pointerEvents='auto';
  function tortRamp(t){
    t=clamp01(t);
