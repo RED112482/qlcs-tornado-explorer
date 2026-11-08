@@ -34,7 +34,10 @@ CMAP = ListedColormap(COLORS)
 NORM = BoundaryNorm(LEVELS, CMAP.N)
 
 def utc(s: str) -> dt.datetime:
-    return dt.datetime.fromisoformat(s.replace("Z", "+00:00")).replace(tzinfo=dt.timezone.utc)
+    parsed = dt.datetime.fromisoformat(s.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=dt.timezone.utc)
+    return parsed.astimezone(dt.timezone.utc)
 
 def dates_in(start, end):
     day = start.date()
@@ -115,7 +118,7 @@ def run():
     parser.add_argument("--start", help="UTC ISO start")
     parser.add_argument("--end", help="UTC ISO end")
     parser.add_argument("--latest", action="store_true", help="Last 90 min")
-    parser.add_argument("--max-files", type=int, default=72, help="Maximum scans to process; 0 means all, capped at 96")
+    parser.add_argument("--max-files", type=int, default=12, help="Maximum scans to render in one run (1–32); use separate requests for longer cases")
     parser.add_argument("--range-km",type=int,default=160,help="Radar radius to render in km (80–230); native gates preserved")
     parser.add_argument("--pixels",type=int,default=2300,help="PNG width/height in pixels (1400–2800)")
     args = parser.parse_args()
@@ -131,32 +134,44 @@ def run():
         start, end = utc(args.start), utc(args.end)
     if end <= start or end - start > dt.timedelta(hours=6):
         parser.error("Time range must be greater than 0 and at most 6 hours")
-    limit = min(max(args.max_files if args.max_files > 0 else 96, 1), 96)
+    limit = min(max(args.max_files if args.max_files > 0 else 12, 1), 32)
     render_range=int(np.clip(args.range_km,80,230))
     render_pixels=int(np.clip(args.pixels,1400,2800))
     client = boto3.client("s3", region_name="us-east-1", config=Config(signature_version=UNSIGNED))
     scans = list_scans(client, site, start, end)
     if not scans:
         raise SystemExit(f"No Level II files found for {site} during UTC {start}–{end}")
+    print(f"Archive inventory: {len(scans)} Level II volumes for {site} during {start.isoformat()} to {end.isoformat()}", flush=True)
     if args.latest:
         chosen = scans[-limit:]
     else:
         positions = np.linspace(0, len(scans)-1, min(limit,len(scans))).astype(int)
         chosen = [scans[i] for i in positions]
     frames = []
+    failures = []
     for stamp, key in chosen:
-        print("Reading", key, flush=True)
-        with tempfile.TemporaryDirectory() as tmp:
-            raw = Path(tmp)/"nexrad_volume"
-            client.download_file(BUCKET, key, str(raw))
-            radar = pyart.io.read_nexrad_archive(str(raw))
-            relative = Path("data")/site/f"{stamp:%Y%m%d_%H%M%S}.png"
-            bounds, angle = render(radar, ROOT/relative, max_range_km=render_range, image_size_px=render_pixels)
-        frames.append(dict(site=site,time=stamp.isoformat().replace("+00:00","Z"),
-                           url="./"+relative.as_posix(),bounds=bounds,
-                           elevation_deg=round(angle,2),field="reflectivity",render_radius_km=render_range,
-                           image_pixels=render_pixels,
-                           source="Unidata NEXRAD Level II",s3_key=key))
+        print("Decoding", key, flush=True)
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                raw = Path(tmp)/"nexrad_volume"
+                client.download_file(BUCKET, key, str(raw))
+                radar = pyart.io.read_nexrad_archive(str(raw))
+                relative = Path("data")/site/f"{stamp:%Y%m%d_%H%M%S}.png"
+                bounds, angle = render(radar, ROOT/relative, max_range_km=render_range, image_size_px=render_pixels)
+            frames.append(dict(site=site,time=stamp.isoformat().replace("+00:00","Z"),
+                               url="./"+relative.as_posix(),bounds=bounds,
+                               elevation_deg=round(angle,2),field="reflectivity",render_radius_km=render_range,
+                               image_pixels=render_pixels,
+                               source="Unidata NEXRAD Level II",s3_key=key))
+            print(f"Decoded {len(frames)}/{len(chosen)}", flush=True)
+        except Exception as exc:
+            # A single corrupt or unsupported historical volume must not
+            # discard the entire case; retain all successfully decoded scans.
+            failures.append({"key":key,"error":str(exc)})
+            print(f"WARNING: Level II volume failed: {key}: {exc}", flush=True)
+            continue
+    if not frames:
+        raise SystemExit(f"Unable to decode any Level II volumes; {len(failures)} scan errors: {failures[:3]}")
     DATA.mkdir(exist_ok=True)
     # Merge retained frames for other sites and dates, retaining bounded history.
     manifest_path = DATA/"manifest.json"
@@ -164,10 +179,17 @@ def run():
     existing = {(f["site"],f["time"]):f for f in old.get("frames", [])}
     for f in frames:
         existing[(f["site"],f["time"])] = f
-    merged = sorted(existing.values(),key=lambda f:f["time"])[-500:]
+    # Preserve historical case diversity instead of dropping older cases by
+    # global chronological recency. A bounded per-site/day cap protects repo size.
+    by_case = {}
+    for frame in sorted(existing.values(), key=lambda f:f["time"]):
+        case_key = (frame["site"], frame["time"][:10])
+        by_case.setdefault(case_key, []).append(frame)
+    merged = sorted((frame for day in by_case.values() for frame in day[-48:]),
+                    key=lambda f:(f["site"], f["time"]))
     manifest_path.write_text(json.dumps({"version":1,"updated":dt.datetime.now(dt.timezone.utc).isoformat(),
                                          "frames":merged},indent=2)+"\n")
-    print(f"Published {len(frames)} Level II image(s) to {manifest_path}",flush=True)
+    print(f"Published {len(frames)}/{len(chosen)} Level II image(s) to {manifest_path}. Decode failures: {len(failures)}",flush=True)
 
 if __name__=="__main__":
     run()
