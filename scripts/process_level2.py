@@ -32,11 +32,32 @@ COLORS = ["#00aa00", "#00e500", "#ffff00", "#ffaa00", "#ff6a00", "#ff0000",
 LEVELS = [5, 15, 20, 30, 35, 40, 45, 50, 55, 60, 65, 70, 85]
 CMAP = ListedColormap(COLORS)
 NORM = BoundaryNorm(LEVELS, CMAP.N)
-# Un-dealiased radial velocity, negative=inbound, positive=outbound, in knots.
-VEL_CMAP = LinearSegmentedColormap.from_list("native_vel", [
-    "#0f522f", "#008e49", "#24ce68", "#91f7b1", "#cdd8da",
-    "#dedee0", "#f2c9bc", "#ee6865", "#cb2e3b", "#8c122a"], N=256)
-VEL_NORM = Normalize(vmin=-75, vmax=75)
+# Velocity colors sampled from the user-provided -200 to +200 kt legend.
+# Red/orange = positive outbound, green/blue = negative inbound. Raw aliasing retained.
+VEL_CMAP = LinearSegmentedColormap.from_list("user_supplied_velocity", [
+    (0.00, "#0a0404"),
+    (0.05, "#542025"),
+    (0.10, "#a43949"),
+    (0.15, "#d21d64"),
+    (0.20, "#fa0081"),
+    (0.25, "#4b0097"),
+    (0.30, "#0079d3"),
+    (0.35, "#08fee1"),
+    (0.40, "#03ff04"),
+    (0.45, "#0b930b"),
+    (0.50, "#807e7f"),
+    (0.55, "#9e0000"),
+    (0.60, "#fe0004"),
+    (0.65, "#ff0391"),
+    (0.70, "#ff9689"),
+    (0.75, "#ff8f00"),
+    (0.80, "#fffc00"),
+    (0.85, "#d2d221"),
+    (0.90, "#a4a444"),
+    (0.95, "#cdcd9f"),
+    (1.00, "#fbfbf8"),
+], N=256)
+VEL_NORM = Normalize(vmin=-200, vmax=200)
 
 def utc(s: str) -> dt.datetime:
     parsed = dt.datetime.fromisoformat(s.replace("Z", "+00:00"))
