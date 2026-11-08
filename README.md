@@ -273,6 +273,7 @@ AWS infrastructure is **not deployed** by this change: a cloud account, cost/usa
 - Toggle on **click-on-the-line** vectors and optionally plot 3/5/7/9 evenly spaced scenario arrows along the leading edge.
 - **Manual deviation**: add a signed clockwise angle to the user-entered QLCS system-motion direction, and set a hypothetical circulation speed in knots.
 - **0–1 km steering**: blend QLCS translation with the mean of available 10-m and 1-km **wind-TOWARD vectors**, using user-controlled weights (no established physical regression coefficient).
+- **A/B local line motion**: use the existing Capture A / Capture B leading-edge traces to calculate segment-specific line displacement. This describes approximate QLCS line movement, NOT tracked mesovortex/tornado translation.
 - **Illustrative northern-flank drift**: mark the bow apex on the drawn line, then add a user-controlled component toward the northern end of the line. The increment is tapered with distance from the marked apex (a geometric sensitivity heuristic, not an empirically supported forecast equation).
 - Choose a 5–20 minute arrow lead, click a particular point for a labeled arrow, and see multiple arrows in magenta versus the original **yellow QLCS translation**. The existing single Clear button clears all vectors alongside the track.
 
