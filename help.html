@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>QLCS Concept Guide — QTor, Tortuosity & Relative Index</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;font-family:Poppins,Arial,sans-serif;background:#0a1924;color:#e8f7fa}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(160deg,#10222e,#0b1a25 70%);line-height:1.55}
+main{width:min(1300px,100%);margin:auto;padding:25px 22px 55px}
+header{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+a{color:#92ebee}.back{display:inline-block;border:1px solid #638a9b;border-radius:9px;padding:9px 14px;color:#daf9ff;text-decoration:none;background:#173544}
+h1{font-size:clamp(1.6rem,3.8vw,2.6rem);letter-spacing:-.04em;line-height:1.2;margin:18px 0 8px}
+h1 span{color:#43dfe1}.sub{color:#c4dbe6;margin:0 0 21px}
+.layout{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:15px}
+.panel{border:1px solid #558397;border-radius:15px;background:#102634;padding:18px;min-width:0}
+.panel h2{font-size:1.15rem;margin:0 0 8px;color:#ebfafd}.panel h3{font-size:1rem;color:#8decf3;margin:0 0 8px}
+.panel p{font-size:13px;margin:8px 0;color:#c7e0e8}
+.mainpanel{grid-row:span 2}.diagram{width:100%;height:auto;display:block;margin-top:10px;background:#0c1e2b;border-radius:11px}
+.legend{display:flex;flex-wrap:wrap;gap:9px 17px;margin:12px 0;font-size:12px;color:#e8f3f4}
+.legend span{display:inline-flex;gap:7px;align-items:center}.swatch{display:inline-block;width:28px;height:8px;border-radius:3px}
+.qtbar{background:linear-gradient(90deg,#e2535c,#f4c545,#20d77b)}
+.tortbar{background:linear-gradient(90deg,#206843,#5bda5f,#43f4c5)}
+.goldbar{background:#f2d05e}.whitebar{background:#eaf5fa}.yellowbar{background:#ffe06b}
+.bar{height:17px;border-radius:12px;margin:15px 0 3px;border:1px solid #bdd1d6}
+.scale{display:flex;justify-content:space-between;color:#aacaD6;font-size:11px}
+.formula{background:#f5e9b7;color:#1f2c2d;padding:11px 13px;border-radius:9px;font-weight:700;font-size:13px;margin:13px 0}
+.triplet{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;margin:12px 0}
+.part{background:#183646;border:1px solid #4e7789;border-radius:9px;padding:10px 6px;font-size:11px;line-height:1.5}
+.part b{display:block;margin-bottom:8px}
+.part svg{width:100%;max-width:100px;height:55px}
+.tortuosity-demo{display:grid;grid-template-columns:1fr 1fr;gap:16px;text-align:center}
+.tortuosity-demo svg{display:block;width:100%;height:115px;margin:0 auto}
+.notice{border-left:4px solid #f1ce6c;background:#2d2a21;padding:13px 16px;border-radius:8px;color:#fff0c4;font-size:12px;margin-top:15px}
+.weighting{display:grid;grid-template-columns:1fr 1fr;gap:13px;align-items:center;font-size:11px;font-weight:600}
+.weighting .bar{height:13px;margin:6px 0}
+.combo{font-size:14px;text-align:center;font-weight:700;color:#b8eff3;margin:12px 0 0}
+.steps{margin:5px 0;padding-left:19px;color:#d2e8f0;font-size:12px}
+.steps li{margin:7px 0}
+footer{font-size:12px;color:#93b0c1;margin-top:24px}
+@media(max-width:850px){.layout{grid-template-columns:1fr}.mainpanel{grid-row:auto}.panel{padding:14px}}
+@media print{body{background:#fff;color:#111}main{padding:8px}.panel{border-color:#555;background:#fff}.panel p,.sub,.scale,.steps{color:#333}.diagram{background:#142835}h1 span{color:#178487}.back{display:none}}
+</style></head>
+<body><main>
+<header><div><strong style="color:#5adddd;font-size:12px;letter-spacing:.08em">QLCS TORNADO POTENTIAL EXPLORER · CONCEPT GUIDE</strong></div><a class="back" href="./index.html">← Back to Explorer</a></header>
+<h1>Understanding <span>QLCS line analysis</span></h1>
+<p class="sub">A one-page conceptual guide to the three color modes, line-normal/parallel shear, and the 40-km inflow reference.</p>
+<div class="layout">
+<section class="panel mainpanel">
+<h2>What is plotted on the traced line?</h2>
+<p><strong>The line itself changes color.</strong> The gradient follows the leading-edge trace, highlighting differences between segments without turning them into yes/no categories.</p>
+<svg class="diagram" viewBox="0 0 630 455" role="img" aria-label="Curved QLCS line colored from red through yellow to green, with a gold region extending ahead of the line, white line-normal arrows and yellow storm-motion arrows">
+<defs>
+  <linearGradient id="qt" x1="0%" x2="100%" y1="100%" y2="0%"><stop offset="0" stop-color="#e2535c"/><stop offset=".5" stop-color="#f4c545"/><stop offset="1" stop-color="#20d77b"/></linearGradient>
+  <marker id="arrwhite" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6Z" fill="#e6f5f6"/></marker>
+  <marker id="arryellow" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8Z" fill="#ffe06b"/></marker>
+</defs>
+<path d="M56 380 C128 348 135 299 210 292 S318 225 377 192 S443 127 475 56 L548 44 C528 156 463 237 412 267 S278 353 230 367 S111 423 56 380Z" fill="#f2d05e" fill-opacity=".15" stroke="#f2d05e" stroke-width="2" stroke-dasharray="7 6"/>
+<path d="M56 380 C128 348 135 299 210 292 S318 225 377 192 S443 127 475 56" fill="none" stroke="#14202b" stroke-width="17" stroke-linecap="round"/>
+<path d="M56 380 C128 348 135 299 210 292 S318 225 377 192 S443 127 475 56" fill="none" stroke="url(#qt)" stroke-width="11" stroke-linecap="round"/>
+<g stroke="#e6f5f6" stroke-width="2.5" fill="none" marker-end="url(#arrwhite)">
+<path d="M147 336 L121 285"/><path d="M249 283 L218 233"/><path d="M348 214 L318 162"/><path d="M435 137 L402 91"/>
+</g>
+<g stroke="#ffe06b" stroke-width="4" fill="none" marker-end="url(#arryellow)"><path d="M245 333 L293 304"/><path d="M352 281 L402 253"/><path d="M446 218 L493 177"/></g>
+<g font-family="Poppins,Arial" font-size="15" font-weight="700">
+<rect x="17" y="391" width="171" height="36" rx="8" fill="#471e2c" stroke="#e2535c"/><text x="28" y="415" fill="#fff">Lower relative index</text>
+<rect x="362" y="15" width="234" height="36" rx="8" fill="#17422b" stroke="#20d77b"/><text x="371" y="39" fill="#e8fff0">Higher relative index</text>
+<rect x="314" y="349" width="276" height="52" rx="8" fill="#373117" stroke="#f2d05e"/><text x="326" y="370" fill="#ffe89b">40-km ahead-of-line</text><text x="326" y="388" fill="#ffe89b">environmental reference</text>
+<text x="30" y="50" fill="#bff6f6" font-size="13">Cyan trace = user-drawn leading edge</text>
+<text x="25" y="76" fill="#c4d5de" font-size="12">White = local line-normal direction</text>
+<text x="25" y="97" fill="#ffe06b" font-size="12">Yellow = storm motion (toward)</text>
+</g></svg>
+<div class="legend">
+<span><i class="swatch qtbar"></i> QTor/weighted line gradient</span>
+<span><i class="swatch tortbar"></i> Tortuosity gradient</span>
+<span><i class="swatch goldbar"></i> Inflow reference</span>
+<span><i class="swatch whitebar"></i> Line-normal</span>
+<span><i class="swatch yellowbar"></i> Motion</span>
+</div>
+<p>The gold ribbon extends <strong>40 km ahead of the line</strong>, where inflow environmental sampling would conceptually occur. In this version it is a geographic reference—not a demonstrated RAP sampling corridor, warning polygon or tornado swath.</p>
+</section>
+<section class="panel">
+<h2>1 · QTor-inspired relative index</h2>
+<p>Uses the local orientation of the line to project the environmental wind shear onto the line-relative axes and combines that signal with a curvature enhancement.</p>
+<div class="triplet">
+<div class="part"><b>0–3 km<br>line-normal shear</b><svg viewBox="0 0 110 60"><path d="M82 3L44 57" stroke="#43dfe1" stroke-width="5"/><g stroke="#d9f6ff" stroke-width="3"><path d="M11 16H53 M11 29H53 M11 42H53"/></g></svg></div>
+<div class="part"><b>0–1 km<br>line-parallel shear</b><svg viewBox="0 0 110 60"><path d="M82 3L44 57" stroke="#43dfe1" stroke-width="5"/><g stroke="#ffe06b" stroke-width="3"><path d="M26 48L56 9 M39 53L69 14"/></g></svg></div>
+<div class="part"><b>Localized bowing<br>and curvature</b><svg viewBox="0 0 110 60"><path d="M24 52Q78 28 36 4" fill="none" stroke="#43dfe1" stroke-width="5"/><path d="M24 52L36 4" fill="none" stroke="#e2e5ed" stroke-width="2" stroke-dasharray="4 3"/></svg></div>
+</div>
+<div class="bar qtbar"></div><div class="scale"><span>Lower relative score</span><span>Higher relative score</span></div>
+<p>Colors are stretched to show differences <strong>within the drawn line</strong>. The actual diagnostic values are unchanged, and equal colors across different cases do not imply equal environments.</p>
+</section>
+<section class="panel">
+<h2>2 · Tortuosity enhancement</h2>
+<div class="tortuosity-demo">
+<div><b>Straighter</b><svg viewBox="0 0 140 115"><path d="M62 105L62 10" stroke="#49e6ec" stroke-width="7" stroke-linecap="round"/></svg></div>
+<div><b>More bowed</b><svg viewBox="0 0 140 115"><path d="M48 105Q120 55 50 10" stroke="#4de6b2" stroke-width="7" fill="none" stroke-linecap="round"/><path d="M48 105L50 10" stroke="#d5e9ef" stroke-width="2" stroke-dasharray="5 5"/></svg></div>
+</div>
+<div class="formula">Tortuosity = curved path length ÷ straight chord distance</div>
+<div class="bar tortbar"></div><div class="scale"><span>Weaker geometric boost</span><span>Stronger geometric boost</span></div>
+<p>In the Explorer, a continuous 1–2× modifier increases with curvature above the user-selected start threshold. This is an <strong>illustrative implementation choice</strong>, not a validated genesis likelihood.</p>
+</section>
+<section class="panel">
+<h2>3 · Experimental weighted relative index</h2>
+<p>Visual comparison blend of the two normalized research-inspired ingredients:</p>
+<div class="weighting">
+<div>70% QTor-inspired score<div class="bar qtbar"></div></div>
+<div>30% tortuosity boost<div class="bar tortbar"></div></div>
+</div>
+<div class="combo">↓ &nbsp; Combine normalized indices &nbsp; ↓</div>
+<div class="bar qtbar"></div><div class="scale"><span>Lower combined relative score</span><span>Higher combined relative score</span></div>
+<p>The 70/30 weights are <strong>not research-fitted coefficients</strong>. This is not a statistical probability of QLCS mesovortex genesis or a tornado forecast.</p>
+</section>
+</div>
+<div class="notice"><strong>Interpretation:</strong> The colored line ranks relative signals along the current trace. Green means a higher value <em>within that trace</em>, not a guaranteed tornado or a calibrated probability. Red means a lower value, not zero risk. The shear profile is site-representative, not a time-varying forecast at every line segment.</div>
+<footer><a href="./index.html">Return to the QLCS Tornado Potential Explorer</a> · Research/training only · This visual explanation and its weighted index are conceptual, not reproductions of validated QTor probability calibration.</footer>
+</main></body></html>
