@@ -8,6 +8,17 @@ map.createPane('landPane');map.getPane('landPane').style.zIndex=220;
 const landState=L.geoJSON(null,{pane:'landPane',style:()=>({color:'#a3adb8',weight:1.15,opacity:.8,fillColor:'#434c56',fillOpacity:1}),interactive:false}).addTo(map);
 fetch('https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json').then(r=>{if(!r.ok)throw Error('state map '+r.status);return r.json();}).then(g=>landState.addData(g)).catch(err=>{console.warn('State fill unavailable',err);});
 map.createPane('radarPane');map.getPane('radarPane').style.zIndex=330;
+// Show/hide the entire radar pane (both Level II image overlays and Level III
+// tiles). Never hide the geographic boundaries or diagnostic overlays.
+function syncRadarVisibility(){
+ const visible=$('showRadar').checked;
+ map.getPane('radarPane').style.display=visible?'':'none';
+ $('radarOpacity').disabled=!visible;
+ $('radarOpacityValue').textContent=$('radarOpacity').value+'%';
+}
+$('showRadar').addEventListener('change',syncRadarVisibility);
+$('radarOpacity').addEventListener('input',syncRadarVisibility);
+syncRadarVisibility();
 map.createPane('boundaryPane');map.getPane('boundaryPane').style.zIndex=370;
 const drawn=L.featureGroup().addTo(map),analysis=L.layerGroup().addTo(map);
 const drawControl=new L.Control.Draw({draw:{polyline:{shapeOptions:{color:'#56e9ec',weight:4}},polygon:false,rectangle:false,marker:false,circle:false,circlemarker:false},edit:{featureGroup:drawn,remove:true}});map.addControl(drawControl);
