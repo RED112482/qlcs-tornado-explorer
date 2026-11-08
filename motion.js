@@ -113,6 +113,7 @@
    $('forecastHoursValue').textContent=Number($('forecastHours').value).toFixed(1)+' h';
    $('forecastSpreadValue').textContent=$('forecastSpread').value+' km/h';
    $('shapeLockValue').textContent=$('shapeLock').value+'%';
+   $('favorableFillOpacityValue').textContent=$('favorableFillOpacity').value+'%';
    if(!$('showForecast').checked){$('motionForecastStatus').textContent='Future envelopes hidden.';return;}
    const latest=drawn.getLayers()[0];
    const baseCoords=B?B.coords:(latest?latest.getLatLngs().map(p=>[p.lat,p.lng]):null);
@@ -132,6 +133,7 @@
    const line=normalizedLine(baseCoords);
    if(!line)return;
    const hours=Number($('forecastHours').value),spread=Number($('forecastSpread').value);
+   const higherOpacity=Number($('favorableFillOpacity').value)/100;
    const sampleCount=28;
    // Score-by-fraction is based on the current, stationary representative wind
    // analysis. It is NOT extrapolated into a verified future environment.
@@ -158,9 +160,17 @@
    };
    for(let k=1;k<sampleCount;k++){
      const color=segmentColor(k);
+     const diagnostic=window.qlcsDiagnosticAt?.((k-.5)/(sampleCount-1));
+     // The most favorable category is the most visible; lower categories
+     // remain distinct without overpowering radar or geographic boundaries.
+     const category=diagnostic?.category;
+     const opacity=category==='Higher'?higherOpacity:
+       category==='Medium'?Math.min(.32,higherOpacity*.65):
+       category==='Lower'?Math.min(.22,higherOpacity*.45):
+       diagnostic?(.16+higherOpacity*.5*diagnostic.relativeColor):.18;
      L.polygon([now[k-1],now[k],future[k],future[k-1]],{
-       pane:'forecastPane',stroke:false,fillColor:color,fillOpacity:.20,
-       interactive:false
+       pane:'forecastPane',color:color,weight:1.0,opacity:Math.min(.55,opacity+.1),
+       fillColor:color,fillOpacity:opacity,interactive:false
      }).addTo(forecast);
    }
    // Borders trace the full traveled corridor from captured B to projected edge.
@@ -250,7 +260,7 @@
  for(const id of ['gradientMode','weightedCategories','showScores','step','tortuosity','threshold'])
    $(id).addEventListener('input',()=>{queueMicrotask(compute);});
  $('resetMotion').onclick=()=>{A=null;B=null;$('forecastHours').value='1';$('motionMethod').value='manual';$('forecastHoursValue').textContent='1.0 h';forecast.clearLayers();previous.clearLayers();$('motionCaptureStatus').textContent='Captures cleared. Draw a leading edge and save Scan A.';$('motionForecastStatus').textContent='Two-frame motion not yet calculated.';};
- for(const id of ['motionMethod','motionSpeedKt','forecastHours','forecastSpread','shapeLock','showForecast'])
+ for(const id of ['motionMethod','motionSpeedKt','forecastHours','forecastSpread','shapeLock','favorableFillOpacity','showForecast'])
    $(id).addEventListener('input',compute);
  // Update on redraw/environment adjustments but do NOT overwrite captured shapes.
  $('analyze').addEventListener('click',compute);
