@@ -40,8 +40,8 @@
      return;
    }
    const velocity=$('radarMoment').value==='velocity';
-   $('radarMomentLegend').hidden=!velocity;
    const url=velocity?frame.velocity_url:frame.url;
+   $('radarMomentLegend').hidden=!velocity||!url;
    const bounds=velocity?frame.velocity_bounds:frame.bounds;
    const elevation=velocity?frame.velocity_elevation_deg:frame.elevation_deg;
    if(!url||!Array.isArray(bounds)){
