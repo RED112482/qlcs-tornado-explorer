@@ -1,0 +1,71 @@
+name: Optional delayed live NEXRAD Level II
+on:
+  schedule:
+    # Opt-in only, via repo variable QLCS_LIVE_RADAR_SITE (e.g., KMOB).
+    # GitHub Actions schedules can be delayed or skipped under load.
+    - cron: '7,17,27,37,47,57 * * * *'
+  workflow_dispatch:
+    inputs:
+      site:
+        description: "NEXRAD radar ID, e.g. KMOB"
+        required: true
+        type: string
+        default: "KMOB"
+permissions:
+  contents: write
+concurrency:
+  group: qlcs-live-level2
+  cancel-in-progress: false
+jobs:
+  decode-latest:
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.QLCS_LIVE_RADAR_SITE != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements-radar.txt
+      - name: Resolve enabled live radar site
+        id: radar
+        env:
+          EVENT: ${{ github.event_name }}
+          SCHEDULED_SITE: ${{ vars.QLCS_LIVE_RADAR_SITE }}
+          INPUT_SITE: ${{ inputs.site }}
+        shell: bash
+        run: |
+          if [ "$EVENT" = "workflow_dispatch" ]; then SITE="$INPUT_SITE"
+          else SITE="$SCHEDULED_SITE"; fi
+          SITE=$(echo "$SITE" | tr '[:lower:]' '[:upper:]')
+          if [[ ! "$SITE" =~ ^K[A-Z0-9]{3}$ ]]; then
+            echo "Invalid configured radar site" >&2
+            exit 2
+          fi
+          echo "site=$SITE" >> "$GITHUB_OUTPUT"
+      - name: Install Level II processor
+        run: pip install -r requirements-radar.txt
+      - name: Decode two latest completed Level II volumes
+        env:
+          SITE: ${{ steps.radar.outputs.site }}
+        run: |
+          python scripts/process_level2.py --site "$SITE" --latest --max-files 2 --pixels 2300 --range-km 160
+      - name: Publish bounded near-live reflectivity and velocity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A data/
+          if git diff --staged --quiet; then
+            echo "No new Level II frames"
+            exit 0
+          fi
+          git commit -m "Update delayed Level II live reflectivity/velocity snapshots"
+          for attempt in 1 2 3 4 5 6; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 3))
+          done
+          exit 1
