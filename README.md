@@ -217,3 +217,16 @@ The guide is a native SVG/HTML illustration, so it remains sharp at any zoom, wo
 Weighted relative index is the default gradient mode, with a toggle to display **three line-relative categories**: **Lower** (red, relative color position < 1/3), **Medium** (yellow, 1/3 to < 2/3), and **Higher** (green, ≥ 2/3). Disabling the toggle restores the smooth continuous color scale. The classification applies consistently to the currently traced line, translucent downstream swept area, and projected future line edge. Contiguous runs receive sparse category labels, and the analysis panel provides a matching three-color legend.
 
 Category boundaries are applied to a **within-line 10th–90th percentile color stretch** of the experimental 70% normalized QTor-inspired / 30% continuous tortuosity blend. Numeric diagnostic values are unchanged. If values are nearly uniform, the renderer uses the middle class instead of inventing a spatial ranking. **The three labels are not statistical probability bins, empirically derived mesovortex-genesis thresholds, or operational warning triggers.** Comparisons between two separately drawn lines require comparing the underlying numeric index, not the categorical colors.
+
+
+## v1.4.1 — Toggle radar and emphasize favorable downstream areas
+
+The **Radar & Timeline** panel has a **Show radar reflectivity** checkbox that hides/shows the radar pane for *both* decoded Level II and IEM Level III without hiding geographic boundaries, traced lines, wind barbs or downstream analysis. The radar opacity slider continues to work independently when reflectivity is visible.
+
+The **Downstream Projection** section has a new **Higher-favorability downstream fill** slider (15–75%, default 50%). In the three-category weighted view the **Higher** region receives this fill opacity, **Medium** is limited to a lighter tint and **Lower** is lighter still. Colored boundary strokes help delineate individual projected corridor segments. This only changes visualization, not the diagnostic formula or the probability of mesovortex genesis.
+
+### Past Level II cases: source availability versus viewer availability
+
+The NOAA/Unidata public S3 bucket contains archived raw Level II volumes (current bucket `unidata-nexrad-level2`), but **the static GitHub Pages app cannot decode these files by changing the date**. The page only renders genuine Level II scans previously processed by `.github/workflows/process-level2.yml` and published to `data/manifest.json`. Other dates attempt the separately labeled historical IEM Level III fallback, which is not Level II. Each new Level II case must be submitted through the GitHub workflow with the selected UTC window; use the in-page copy button to obtain the settings. For a typical one-hour case request, **12 scans** is the default to avoid timeouts; longer cases should be processed in separate hour-sized windows.
+
+The historical decoder now logs actual S3 volume inventory, continues past individual unreadable/corrupt radar volumes, and retains published frames by radar/day rather than evicting every older case after a global 500-frame cap. The job limit has been extended to 45 minutes, although large requests may still exceed compute/storage limits. **This is a more resilient manual workflow, not automatic on-demand Level II availability.**
