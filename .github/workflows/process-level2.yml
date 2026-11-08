@@ -40,6 +40,7 @@ on:
         type: boolean
 permissions:
   contents: write
+  pages: write
 concurrency:
   group: nexrad-level2-data
   cancel-in-progress: false
@@ -127,3 +128,12 @@ jobs:
             echo "Could not publish radar frames after retries" >&2
             exit 1
           fi
+      - name: Request Pages rebuild after data publication
+        if: success()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          echo "Asking GitHub Pages to rebuild after GITHUB_TOKEN-generated data commit."
+          gh api --method POST "/repos/$REPO/pages/builds"
