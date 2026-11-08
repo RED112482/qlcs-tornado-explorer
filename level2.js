@@ -495,8 +495,12 @@
  function selectedRapTime(){
    if($('mode').value==='archive'){
      const selected=scanTimes.length?scanTimes[Number($('scanSlider').value)||0]:null;
-     const stamp=selected||$('startUTC').value;
-     const epoch=Date.parse(stamp);
+     const begin=Date.parse($('startUTC').value),end=Date.parse($('endUTC').value);
+     // A calendar change can precede the asynchronous scan lookup. Do not
+     // accidentally request the RAP cycle of the previous selected date.
+     const candidate=Date.parse(selected||'');
+     const epoch=Number.isFinite(candidate)&&candidate>=begin&&candidate<end
+       ?candidate:begin;
      return Number.isFinite(epoch)?new Date(epoch).toISOString():null;
    }
    return new Date().toISOString();
