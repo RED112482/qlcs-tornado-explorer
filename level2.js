@@ -102,6 +102,24 @@
    }
  };
  $('radarMoment').addEventListener('change',()=>{if(source.value==='level2')showLevel2();});
+ // GR2Analyst-style quick moment switch. Do not intercept typing, line editing,
+ // or Delete in a form. Numpad Decimal is frequently marked "Del" on keyboards.
+ document.addEventListener('keydown',event=>{
+   if(event.repeat||event.ctrlKey||event.metaKey||event.altKey)return;
+   if(!['Period','NumpadDecimal','Delete'].includes(event.code)&&event.key!=='.')return;
+   const el=document.activeElement;
+   if(el&&(el.isContentEditable||['INPUT','TEXTAREA','SELECT'].includes(el.tagName)))return;
+   if(map.getContainer().classList.contains('freehand-active'))return;
+   if(source.value!=='level2')return;
+   const frame=chooseFrame();
+   if(!frame?.url||!frame?.velocity_url){
+     $('radarStatus').textContent='R/V shortcut unavailable: both Level II moments must be processed';
+     return;
+   }
+   event.preventDefault();
+   $('radarMoment').value=$('radarMoment').value==='reflectivity'?'velocity':'reflectivity';
+   showLevel2();
+ });
  async function checkLatestLevel2(){
    $('level2Info').textContent='Refreshing latest published native Level II volumes…';
    await getManifest();
