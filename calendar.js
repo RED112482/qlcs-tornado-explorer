@@ -55,6 +55,57 @@
  });
  // The original code stores a reference to its original findScans() on the button.
  // Rebind after the Level II viewer overrides findScans, so calendar and button agree.
+ // GitHub authenticates the user when they submit the prefilled issue.
+ // The server-side workflow only runs requests authored by repository owner.
+ const ISSUE_URL='https://github.com/RED112482/qlcs-tornado-explorer/issues/new';
+ const validSite=()=>/^K[A-Z0-9]{3}$/.test('K'+$('site').value);
+ let monitor=null;
+ async function checkPublished(){
+   if(!sync()||!validSite())return false;
+   const site='K'+$('site').value,from=Date.parse($('startUTC').value),
+     to=Date.parse($('endUTC').value);
+   try{
+     const r=await fetch('./data/manifest.json?fresh='+Date.now(),{cache:'no-store'});
+     if(!r.ok)throw Error('Manifest HTTP '+r.status);
+     const m=await r.json(),frames=(m.frames||[]).filter(f=>
+       f.site===site&&Date.parse(f.time)>=from&&Date.parse(f.time)<to);
+     if(frames.length){
+       $('level2ProcessStatus').textContent=frames.length+' decoded Level II volume(s) now published for this UTC window. Loading genuine Level II…';
+       $('dataSource').value='level2';
+       await load();
+       populateAvailableDates();
+       if(monitor){clearInterval(monitor);monitor=null;}
+       return true;
+     }
+     $('level2ProcessStatus').textContent='No published Level II scans yet for '+site+' '+$('startUTC').value+'–'+$('endUTC').value+'. If you submitted the GitHub issue, check its Actions run; this page can recheck when frames are published.';
+   }catch(e){$('level2ProcessStatus').textContent='Unable to check processed scans: '+e.message;}
+   return false;
+ }
+ $('checkLevel2').addEventListener('click',checkPublished);
+ $('submitLevel2').addEventListener('click',()=>{
+   if(!sync()||!validSite())return;
+   const from=Date.parse($('startUTC').value),to=Date.parse($('endUTC').value);
+   if(!Number.isFinite(from)||!Number.isFinite(to)||to<=from||(to-from)>3*3600000){
+     $('level2ProcessStatus').textContent='Submit a UTC window of up to 3 hours. For long events, submit separate windows.';
+     return;
+   }
+   const site='K'+$('site').value,st=$('startUTC').value,en=$('endUTC').value;
+   const title='[QLCS Level II] '+site+' '+st+' to '+en;
+   const body='QLCS native Level II archive request (reflectivity + radial velocity)\\n'
+     +'SITE='+site+'\\nSTART_UTC='+st+'\\nEND_UTC='+en+'\\nMAX_SCANS=12\\n'
+     +'\\nPlease submit this issue to request automatic decoding. Repository owner only.';
+   const url=new URL(ISSUE_URL);
+   url.searchParams.set('title',title);
+   url.searchParams.set('body',body.replaceAll('\\n','\n'));
+   const tab=window.open(url.toString(),'_blank','noopener');
+   if(!tab){window.location.href=url.toString();}
+   $('level2ProcessStatus').textContent='GitHub issue prepared. Sign in and click Submit new issue to begin Level II processing. The Explorer will check the manifest periodically for these scans.';
+   if(monitor)clearInterval(monitor);
+   monitor=setInterval(checkPublished,30000);
+ });
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&monitor)checkPublished();});
+ window.addEventListener('focus',()=>{if(monitor)checkPublished();});
+
  $('findScans').onclick=load;
  $('copyLevel2Request').addEventListener('click',async()=>{
    if(!sync())return;
