@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-11-07T10:08:44.823677+00:00",
+  "updated": "2026-11-08T06:54:25.411753+00:00",
   "frames": [
     {
       "site": "KHDC",
@@ -18,6 +18,22 @@
       ],
       "elevation_deg": 0.31,
       "field": "reflectivity",
+      "velocity_url": "./data/KHDC/20240604_210037_vel.png",
+      "velocity_bounds": [
+        [
+          29.06802069521728,
+          -92.09226100604386
+        ],
+        [
+          31.970764431000937,
+          -88.72253677749906
+        ]
+      ],
+      "velocity_elevation_deg": 0.31,
+      "velocity_units": "kt",
+      "velocity_aliased": true,
+      "velocity_error": null,
+      "is_live": false,
       "render_radius_km": 160,
       "image_pixels": 2300,
       "source": "Unidata NEXRAD Level II",
@@ -60,6 +76,22 @@
       ],
       "elevation_deg": 0.31,
       "field": "reflectivity",
+      "velocity_url": "./data/KHDC/20240604_211627_vel.png",
+      "velocity_bounds": [
+        [
+          29.068021646018153,
+          -92.09226277231474
+        ],
+        [
+          31.970764913831268,
+          -88.72253669278359
+        ]
+      ],
+      "velocity_elevation_deg": 0.31,
+      "velocity_units": "kt",
+      "velocity_aliased": true,
+      "velocity_error": null,
+      "is_live": false,
       "render_radius_km": 160,
       "image_pixels": 2300,
       "source": "Unidata NEXRAD Level II",
