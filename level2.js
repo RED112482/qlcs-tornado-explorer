@@ -152,29 +152,96 @@
    const from=(Number(dir)%360+360)%360;
    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true"><g transform="rotate('+from+' 24 42)">'+features+'</g></svg>';
  }
+ // Continuous diagnostic display with stable physical reference scaling.
+ // This IS NOT a calibrated likelihood. QTor terms are a simplified prototype.
+ const clamp01=v=>Math.max(0,Math.min(1,v));
+ const qtorScale=v=>clamp01((Number(v)||0)/6); // fixed 0–6 diagnostic color scale
+ const tortScale=r=>clamp01(((Number(r)||1)-1)/.12);
+ function colorRamp(t){
+   t=clamp01(t);
+   // 0 red -> 0.5 yellow -> 1 green (avoid false threshold step).
+   const stops=[[226,83,92],[244,197,69],[32,215,123]];
+   const i=t<.5?0:1,f=t<.5?t*2:(t-.5)*2;
+   return 'rgb('+stops[i].map((v,k)=>Math.round(v+(stops[i+1][k]-v)*f)).join(',')+')';
+ }
+ function analysisAt(fraction){
+   if(!rows.length)return null;
+   const x=clamp01(fraction)*(rows.length-1),i=Math.min(rows.length-2,Math.floor(x)),w=x-i;
+   const aa=rows[i],bb=rows[i+1];
+   const q=(aa.score*(1-w)+bb.score*w),t=(aa.tortBoost*(1-w)+bb.tortBoost*w);
+   const eligible=q>0;
+   const mode=$('gradientMode').value;
+   const qn=qtorScale(q),tn=clamp01(t);
+   const value=mode==='tortuosity'?tn:mode==='weighted'?(eligible?.7*qn+.3*tn:0):qn;
+   const color=mode==='tortuosity'
+      ?(eligible?colorRamp(.42+.58*tn):'#687684')
+      :colorRamp(value);
+   return {mode,color,value,score:q,tortBoost:tn,eligible};
+ }
+ window.qlcsDiagnosticAt=analysisAt;
+ window.qlcsDiagnosticColor=analysisAt;
+ function updateGradientLegend(){
+   const mode=$('gradientMode').value,track=$('gradientTrack'),
+         preview=$('gradientPreview'),explanation=$('gradientExplanation'),legend=$('analysisLegendText');
+   if(mode==='tortuosity'){
+     track.style.background='linear-gradient(90deg,#eabf45,#9ee65e,#20d77b)';
+     preview.children[0].textContent='Less curvature';
+     preview.children[1].textContent='Stronger tortuosity enhancement';
+     explanation.textContent='Curvature-driven enhancement varies gradually above the chosen tortuosity threshold. Only segments with positive QTor-inspired index use the color ramp; others are muted gray.';
+     legend.textContent='Tortuosity gradient: yellow → bright green = more continuous geometric enhancement (gray = non-favorable reference)';
+   }else if(mode==='weighted'){
+     track.style.background='linear-gradient(90deg,#e2535c,#f4c545,#20d77b)';
+     preview.children[0].textContent='Lower weighted index';
+     preview.children[1].textContent='Higher weighted index';
+     explanation.textContent='Illustrative weighted relative INDEX = 70% normalized QTor-inspired score + 30% continuous tortuosity enhancement. These weights are user-interface choices, not fitted statistical probabilities.';
+     legend.textContent='Weighted relative index: red → yellow → green = increasing experimental diagnostic score (NOT percentage probability)';
+   }else if(mode==='off'){
+     track.style.background='#627987';
+     preview.children[0].textContent='Analysis overlay off';
+     preview.children[1].textContent='Only the drawn line remains';
+     explanation.textContent='Line scoring still runs internally for exported diagnostics, but the colored segments are hidden.';
+     legend.textContent='Line diagnostic gradient hidden';
+   }else{
+     track.style.background='linear-gradient(90deg,#e2535c,#f4c545,#20d77b)';
+     preview.children[0].textContent='Lower QTor-inspired index';
+     preview.children[1].textContent='Higher QTor-inspired index';
+     explanation.textContent='Continuous color ramp from the simplified QTor-inspired index, on a fixed 0–6 visual reference range. Red/yellow/green do not correspond to measured mesovortex probabilities.';
+     legend.textContent='Continuous QTor-inspired index: red → yellow → green = increasing relative index, not calibrated risk';
+   }
+ }
  function advancedDraw(){
    windMarkerLayer.clearLayers();
+   updateGradientLegend();
    if(!rows?.length||!drawn.getLayers().length)return;
-   let threshold=+$('threshold').value;const motion=+$('motion').value;
+   const mode=$('gradientMode').value,motion=Number($('motion').value);
+   const visible=$('showScores').checked&&mode!=='off';
    for(let i=1;i<rows.length;i++){
-     const prev=rows[i-1],cur=rows[i],val=(prev.score+cur.score)/2,hot=val>=threshold;
-     const color=hot?'#38e58c':'#ed6665';
-     L.polyline([prev.point,cur.point],{color,weight:5,opacity:.94,interactive:false}).addTo(windMarkerLayer);
-     if($('showFlare').checked){
-       const shift=hot?26:15;
-       const a=dest(prev.point,motion,shift),b=dest(cur.point,motion,shift);
-       L.polygon([prev.point,cur.point,b,a],{stroke:false,fillColor:color,fillOpacity:hot?.21:.10,interactive:false}).addTo(windMarkerLayer);
+     const prev=rows[i-1],cur=rows[i],diag=analysisAt((i-.5)/(rows.length-1));
+     if(visible){
+       L.polyline([prev.point,cur.point],{color:diag.color,weight:7,opacity:.96,
+          interactive:true})
+        .bindPopup('Relative index: '+diag.score.toFixed(2)+
+          '<br>Continuous tortuosity enhancement: '+diag.tortBoost.toFixed(2)+
+          '<br><strong>Not a calibrated mesovortex probability.</strong>')
+        .addTo(windMarkerLayer);
+     }
+     if($('showFlare').checked&&visible){
+       const a=dest(prev.point,motion,18),b=dest(cur.point,motion,18);
+       L.polygon([prev.point,cur.point,b,a],{
+         stroke:false,fillColor:diag.color,fillOpacity:.12,
+         interactive:false}).addTo(windMarkerLayer);
      }
    }
    if($('showNormals').checked)for(let i=2;i<rows.length;i+=Math.max(3,Math.round(22/Math.max(1,+$('step').value)))){
-     const p=rows[i].point,q=dest(p,rows[i].normal,11),a=dest(q,(rows[i].normal+150)%360,3),b=dest(q,(rows[i].normal+210)%360,3);
+     const p=rows[i].point,q=dest(p,rows[i].normal,11),
+       a=dest(q,(rows[i].normal+150)%360,3),b=dest(q,(rows[i].normal+210)%360,3);
      L.polyline([p,q],{color:'#ebf1fa',weight:1.6,opacity:.85,interactive:false}).addTo(windMarkerLayer);
      L.polyline([a,q,b],{color:'#ebf1fa',weight:1.6,opacity:.85,interactive:false}).addTo(windMarkerLayer);
    }
    if($('showMotion').checked)for(let i=2;i<rows.length;i+=Math.max(3,Math.round(15/Math.max(1,+$('step').value)))){
-     const p=rows[i].point,q=dest(p,motion,22);
+     const p=rows[i].point,q=dest(p,motion,22),
+       a=dest(q,(motion+155)%360,4),b=dest(q,(motion+205)%360,4);
      L.polyline([p,q],{color:'#ffe06b',weight:2.3,opacity:.95,interactive:false,dashArray:'6 4'}).addTo(windMarkerLayer);
-     const a=dest(q,(motion+155)%360,4),b=dest(q,(motion+205)%360,4);
      L.polyline([a,q,b],{color:'#ffe06b',weight:2.3,opacity:.95,interactive:false}).addTo(windMarkerLayer);
    }
  }
