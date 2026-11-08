@@ -157,6 +157,12 @@
  const clamp01=v=>Math.max(0,Math.min(1,v));
  const qtorScale=v=>clamp01((Number(v)||0)/6); // fixed 0–6 diagnostic color scale
  const tortScale=r=>clamp01(((Number(r)||1)-1)/.12);
+ function tortRamp(t){
+   t=clamp01(t);
+   const stops=[[32,104,67],[91,218,95],[67,244,197]];
+   const i=t<.5?0:1,f=t<.5?t*2:(t-.5)*2;
+   return 'rgb('+stops[i].map((v,k)=>Math.round(v+(stops[i+1][k]-v)*f)).join(',')+')';
+ }
  function colorRamp(t){
    t=clamp01(t);
    // 0 red -> 0.5 yellow -> 1 green (avoid false threshold step).
@@ -174,7 +180,7 @@
    const qn=qtorScale(q),tn=clamp01(t);
    const value=mode==='tortuosity'?tn:mode==='weighted'?(eligible?.7*qn+.3*tn:0):qn;
    const color=mode==='tortuosity'
-      ?(eligible?colorRamp(.42+.58*tn):'#687684')
+      ?(eligible?tortRamp(tn):'#687684')
       :colorRamp(value);
    return {mode,color,value,score:q,tortBoost:tn,eligible};
  }
@@ -184,11 +190,11 @@
    const mode=$('gradientMode').value,track=$('gradientTrack'),
          preview=$('gradientPreview'),explanation=$('gradientExplanation'),legend=$('analysisLegendText');
    if(mode==='tortuosity'){
-     track.style.background='linear-gradient(90deg,#eabf45,#9ee65e,#20d77b)';
-     preview.children[0].textContent='Less curvature';
-     preview.children[1].textContent='Stronger tortuosity enhancement';
+     track.style.background='linear-gradient(90deg,#206843,#5bda5f,#43f4c5)';
+     preview.children[0].textContent='Weak tortuosity boost';
+     preview.children[1].textContent='Strong tortuosity boost';
      explanation.textContent='Curvature-driven enhancement varies gradually above the chosen tortuosity threshold. Only segments with positive QTor-inspired index use the color ramp; others are muted gray.';
-     legend.textContent='Tortuosity gradient: yellow → bright green = more continuous geometric enhancement (gray = non-favorable reference)';
+     legend.textContent='Tortuosity enhancement: dark green → lime → turquoise = stronger continuous bowing/curvature (gray = no favorable shear reference)';
    }else if(mode==='weighted'){
      track.style.background='linear-gradient(90deg,#e2535c,#f4c545,#20d77b)';
      preview.children[0].textContent='Lower weighted index';
