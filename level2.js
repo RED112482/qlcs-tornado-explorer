@@ -101,6 +101,29 @@
    }
  };
  $('radarMoment').addEventListener('change',()=>{if(source.value==='level2')showLevel2();});
+ async function checkLatestLevel2(){
+   $('level2Info').textContent='Refreshing latest published native Level II volumes…';
+   await getManifest();
+   const site=normSite($('site').value);
+   const recent=level2Frames().filter(f=>normSite(f.site||level2Manifest.site)===site &&
+     Date.now()-frameTime(f)>=0 && Date.now()-frameTime(f)<=90*60000)
+     .sort((a,b)=>frameTime(b)-frameTime(a));
+   if(recent.length){
+     source.value='level2';
+     $('level2Info').textContent='Most recent native Level II: '+niceTime(recent[0].time)+
+       ' (reflectivity'+(recent[0].velocity_url?' + velocity':' only')+').';
+     refresh();
+   }else{
+     $('level2Info').textContent='No recently processed Level II for K'+site+
+       '. Enable the optional GitHub live processor for this radar or use the independent Level III latest feed.';
+   }
+ }
+ $('checkLiveLevel2').addEventListener('click',checkLatestLevel2);
+ function updateLiveControls(){
+   $('liveLevel2Tools').hidden=$('mode').value!=='live';
+ }
+ $('mode').addEventListener('change',updateLiveControls);
+ updateLiveControls();
  source.addEventListener('change',async()=>{autoArchiveFallback=false;$('archiveDataNotice').hidden=true;stopPlay();if($('mode').value==='archive')return findScans();if(source.value==='level2')await getManifest();refresh();});
  const originalOpacity=$('radarOpacity').oninput;
  $('radarOpacity').oninput=()=>{if(source.value==='level2'&&level2Overlay)level2Overlay.setOpacity(+$('radarOpacity').value/100);else originalOpacity?.();};
