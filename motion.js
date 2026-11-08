@@ -165,8 +165,30 @@
    }
    // Borders trace the full traveled corridor from captured B to projected edge.
    // Narrow transverse connectors are intentionally only at line ends.
-   L.polyline(future,{pane:'forecastPane',color:'#b5ffe0',weight:3.4,
-     opacity:1,dashArray:'9 5',interactive:false}).addTo(forecast);
+   // Distinct category colors continue all the way to the projected edge.
+   // A dark outline separates the colored edge from high-reflectivity imagery.
+   L.polyline(future,{pane:'forecastPane',color:'#101f2d',weight:7,
+     opacity:.85,interactive:false}).addTo(forecast);
+   for(let k=1;k<sampleCount;k++){
+     L.polyline([future[k-1],future[k]],{pane:'forecastPane',color:segmentColor(k),
+       weight:4,opacity:.98,dashArray:'8 4',interactive:false}).addTo(forecast);
+   }
+   // Category names at substantial contiguous future-edge spans.
+   if($('gradientMode').value==='weighted'&&$('weightedCategories').checked&&$('showScores').checked){
+     const labels=future.map((_,k)=>window.qlcsDiagnosticAt?.(k/(sampleCount-1))?.category||null);
+     let first=0;
+     const mark=(lo,hi)=>{
+       if(!labels[lo]||hi-lo<2)return;
+       const mid=Math.floor((lo+hi)/2),color=segmentColor(Math.max(1,mid));
+       L.marker(future[mid],{pane:'forecastPane',interactive:false,keyboard:false,
+         icon:L.divIcon({className:'qlcs-category-label projected',
+           html:'<span style="border-color:'+color+'">+'+hours.toFixed(1)+'h · '+labels[lo]+'</span>',
+           iconSize:[120,24],iconAnchor:[60,32]})}).addTo(forecast);
+     };
+     for(let k=1;k<=labels.length;k++){
+       if(k===labels.length||labels[k]!==labels[first]){mark(first,k-1);first=k;}
+     }
+   }
    for(const edge of [0,sampleCount-1]){
      L.polyline([now[edge],future[edge]],{pane:'forecastPane',color:'#b5ffe0',
        weight:1.6,opacity:.75,dashArray:'7 6',interactive:false}).addTo(forecast);
@@ -225,7 +247,7 @@
  $('captureB').onclick=()=>capture('B');
  $('calculateMotion').onclick=compute;
  // Keep the downstream fill synchronized with the chosen line-gradient view.
- for(const id of ['gradientMode','showScores','step','tortuosity','threshold'])
+ for(const id of ['gradientMode','weightedCategories','showScores','step','tortuosity','threshold'])
    $(id).addEventListener('input',()=>{queueMicrotask(compute);});
  $('resetMotion').onclick=()=>{A=null;B=null;$('forecastHours').value='1';$('motionMethod').value='manual';$('forecastHoursValue').textContent='1.0 h';forecast.clearLayers();previous.clearLayers();$('motionCaptureStatus').textContent='Captures cleared. Draw a leading edge and save Scan A.';$('motionForecastStatus').textContent='Two-frame motion not yet calculated.';};
  for(const id of ['motionMethod','motionSpeedKt','forecastHours','forecastSpread','shapeLock','showForecast'])
