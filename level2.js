@@ -155,7 +155,21 @@
  // Continuous diagnostic display with stable physical reference scaling.
  // This IS NOT a calibrated likelihood. QTor terms are a simplified prototype.
  const clamp01=v=>Math.max(0,Math.min(1,v));
- const qtorScale=v=>clamp01((Number(v)||0)/6); // fixed 0–6 diagnostic color scale
+ // Stretch only the COLOR scale across the current line to expose genuine
+ // variations. The actual QTor-inspired numeric scores remain untouched.
+ // Flat/uniform cases stay visually uniform; never invent variation.
+ function relativeColorScale(values,value){
+   const arr=values.filter(Number.isFinite).slice().sort((a,b)=>a-b);
+   if(!arr.length)return .5;
+   const low=arr[Math.floor(.10*(arr.length-1))];
+   const high=arr[Math.ceil(.90*(arr.length-1))];
+   if(high-low<.001)return .5;
+   return clamp01((value-low)/(high-low));
+ }
+ function qtorScale(v){return clamp01((Number(v)||0)/6);}
+ map.createPane('gradientPane');
+ map.getPane('gradientPane').style.zIndex=470;
+ map.getPane('gradientPane').style.pointerEvents='auto';
  function tortRamp(t){
    t=clamp01(t);
    const stops=[[32,104,67],[91,218,95],[67,244,197]];
@@ -178,10 +192,16 @@
    const mode=$('gradientMode').value;
    const qn=qtorScale(q),tn=clamp01(t);
    const value=mode==='tortuosity'?tn:mode==='weighted'?(eligible?(0.7*qn+0.3*tn):0):qn;
+   const candidates=rows.map(r=>{
+     const candidateQ=qtorScale(r.score),candidateT=clamp01(r.tortBoost);
+     return mode==='tortuosity'?candidateT:
+       mode==='weighted'?(r.score>0?.7*candidateQ+.3*candidateT:0):candidateQ;
+   });
+   const rendered=relativeColorScale(candidates,value);
    const color=mode==='tortuosity'
-      ?(eligible?tortRamp(tn):'#687684')
-      :colorRamp(value);
-   return {mode,color,value,score:q,tortBoost:tn,eligible};
+      ?(eligible?tortRamp(rendered):'#687684')
+      :colorRamp(rendered);
+   return {mode,color,value,relativeColor:rendered,score:q,tortBoost:tn,eligible};
  }
  window.qlcsDiagnosticAt=analysisAt;
  window.qlcsDiagnosticColor=analysisAt;
@@ -192,13 +212,13 @@
      track.style.background='linear-gradient(90deg,#206843,#5bda5f,#43f4c5)';
      preview.children[0].textContent='Weak tortuosity boost';
      preview.children[1].textContent='Strong tortuosity boost';
-     explanation.textContent='Curvature-driven enhancement varies gradually above the chosen tortuosity threshold. Only segments with positive QTor-inspired index use the color ramp; others are muted gray.';
+     explanation.textContent='The local curvature enhancement varies gradually along the line. Colors highlight differences within this trace only; gray sections lack positive QTor-inspired shear support.';
      legend.textContent='Tortuosity enhancement: dark green → lime → turquoise = stronger continuous bowing/curvature (gray = no favorable shear reference)';
    }else if(mode==='weighted'){
      track.style.background='linear-gradient(90deg,#e2535c,#f4c545,#20d77b)';
      preview.children[0].textContent='Lower weighted index';
      preview.children[1].textContent='Higher weighted index';
-     explanation.textContent='Illustrative weighted relative INDEX = 70% normalized QTor-inspired score + 30% continuous tortuosity enhancement. These weights are user-interface choices, not fitted statistical probabilities.';
+     explanation.textContent='Illustrative relative index: 70% normalized QTor-inspired score + 30% tortuosity enhancement. Line colors emphasize its within-track variation; the weights are not trained or calibrated probabilities.';
      legend.textContent='Weighted relative index: red → yellow → green = increasing experimental diagnostic score (NOT percentage probability)';
    }else if(mode==='off'){
      track.style.background='#627987';
@@ -210,7 +230,7 @@
      track.style.background='linear-gradient(90deg,#e2535c,#f4c545,#20d77b)';
      preview.children[0].textContent='Lower QTor-inspired index';
      preview.children[1].textContent='Higher QTor-inspired index';
-     explanation.textContent='Continuous color ramp from the simplified QTor-inspired index, on a fixed 0–6 visual reference range. Red/yellow/green do not correspond to measured mesovortex probabilities.';
+     explanation.textContent='Colors are stretched across the 10th–90th percentile of this traced line to reveal local differences. Underlying scores are unchanged. Red/yellow/green do not represent measured mesovortex probabilities.';
      legend.textContent='Continuous QTor-inspired index: red → yellow → green = increasing relative index, not calibrated risk';
    }
  }
@@ -220,13 +240,16 @@
    if(!rows?.length||!drawn.getLayers().length)return;
    const mode=$('gradientMode').value,motion=Number($('motion').value);
    const visible=$('showScores').checked&&mode!=='off';
+   // One dark underlay gives the full line a readable outline over high dBZ.
+   if(visible)L.polyline(rows.map(r=>r.point),{pane:'gradientPane',color:'#101d26',weight:13,opacity:.95,interactive:false}).addTo(windMarkerLayer);
    for(let i=1;i<rows.length;i++){
      const prev=rows[i-1],cur=rows[i],diag=analysisAt((i-.5)/(rows.length-1));
      if(visible){
-       L.polyline([prev.point,cur.point],{color:diag.color,weight:7,opacity:.96,
+       L.polyline([prev.point,cur.point],{pane:'gradientPane',color:diag.color,weight:9,opacity:1,
           interactive:true})
         .bindPopup('Relative index: '+diag.score.toFixed(2)+
           '<br>Continuous tortuosity enhancement: '+diag.tortBoost.toFixed(2)+
+          '<br>Within-line color position: '+Math.round(diag.relativeColor*100)+' / 100'+
           '<br><strong>Not a calibrated mesovortex probability.</strong>')
         .addTo(windMarkerLayer);
      }
