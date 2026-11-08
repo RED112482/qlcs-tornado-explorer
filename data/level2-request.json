@@ -1,7 +1,7 @@
 {
   "site": "KHDC",
-  "start_utc": "2024-06-04T21:08",
-  "end_utc": "2024-06-04T21:33",
-  "max_scans": 4,
-  "description": "Backfill velocity for remaining default KHDC 2024-06-04 Level II frames"
+  "start_utc": "2024-06-04T21:00",
+  "end_utc": "2024-06-04T21:18",
+  "max_scans": 2,
+  "description": "Render existing historical KHDC Level II radial velocity with the new user-supplied -200 to +200 kt palette"
 }
