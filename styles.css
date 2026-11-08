@@ -189,3 +189,8 @@
 .qlcs-category-label{background:transparent!important;border:0!important;pointer-events:none!important}
 .qlcs-category-label span{display:inline-block;white-space:nowrap;background:#0d2633e8;color:#f5fbfb;border:1px solid #b8d5d8;border-radius:5px;font:700 11px/1.4 Poppins,Arial,sans-serif;padding:3px 6px;text-shadow:0 1px 3px #000;box-shadow:0 2px 8px #0007}
 .qlcs-category-label.projected span{background:#14313bdc}
+
+/* v1.4 — explicit radar toggle and legible downstream favorability */
+.radar-visibility-toggle{background:#153543;border:1px solid #547f8d;border-radius:8px;padding:10px 9px;margin:10px 0;font-weight:700;color:#ddf9ff}
+#favorableFillOpacityValue,#radarOpacityValue{font-variant-numeric:tabular-nums;color:#9bffe0}
+#favorableFillOpacity{accent-color:#20d77b}
