@@ -13,6 +13,7 @@ on:
         default: "KMOB"
 permissions:
   contents: write
+  pages: write
 concurrency:
   group: qlcs-live-level2
   cancel-in-progress: false
@@ -69,3 +70,12 @@ jobs:
             sleep $((attempt * 3))
           done
           exit 1
+      - name: Request Pages rebuild after data publication
+        if: success()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          echo "Asking GitHub Pages to rebuild after GITHUB_TOKEN-generated data commit."
+          gh api --method POST "/repos/$REPO/pages/builds"
