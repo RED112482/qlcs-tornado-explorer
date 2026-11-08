@@ -20,7 +20,7 @@ from botocore.config import Config
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.colors import BoundaryNorm, ListedColormap
+from matplotlib.colors import BoundaryNorm, ListedColormap, LinearSegmentedColormap, Normalize
 import pyart
 from pyproj import Transformer
 
@@ -32,6 +32,11 @@ COLORS = ["#00aa00", "#00e500", "#ffff00", "#ffaa00", "#ff6a00", "#ff0000",
 LEVELS = [5, 15, 20, 30, 35, 40, 45, 50, 55, 60, 65, 70, 85]
 CMAP = ListedColormap(COLORS)
 NORM = BoundaryNorm(LEVELS, CMAP.N)
+# Un-dealiased radial velocity, negative=inbound, positive=outbound, in knots.
+VEL_CMAP = LinearSegmentedColormap.from_list("native_vel", [
+    "#0f522f", "#008e49", "#24ce68", "#91f7b1", "#cdd8da",
+    "#dedee0", "#f2c9bc", "#ee6865", "#cb2e3b", "#8c122a"], N=256)
+VEL_NORM = Normalize(vmin=-75, vmax=75)
 
 def utc(s: str) -> dt.datetime:
     parsed = dt.datetime.fromisoformat(s.replace("Z", "+00:00"))
@@ -62,14 +67,30 @@ def list_scans(client, site, start, end):
                     objects.append((stamp, key))
     return sorted(objects)
 
-def render(radar, png: Path, max_range_km: float=160, image_size_px: int=2300):
-    # First (lowest) elevation sweep; the actual mean angle is recorded.
-    sweep = 0
+def select_lowest_sweep(radar, field):
+    """Split-cut volumes can store low-level reflectivity and velocity in different sweeps."""
+    valid = []
+    for sweep in range(radar.nsweeps):
+        first, last = radar.get_start_end(sweep)
+        data = np.ma.asarray(radar.fields[field]["data"][first:last + 1])
+        count = int(np.ma.count(data))
+        if count < 250:
+            continue
+        elevation = float(np.nanmedian(radar.elevation["data"][first:last + 1]))
+        valid.append((elevation, -count, sweep))
+    if not valid:
+        raise ValueError(f"No valid low-level sweep for {field}")
+    return min(valid)[2]
+
+
+def render(radar, png: Path, moment="reflectivity", max_range_km: float=160, image_size_px: int=2300):
+    candidates = (["reflectivity", "REF", "DBZ", "corrected_reflectivity"]
+                  if moment == "reflectivity" else ["velocity", "VEL", "VRAD", "corrected_velocity"])
+    field = next((name for name in candidates if name in radar.fields), None)
+    if field is None:
+        raise ValueError(f"Field {moment} unavailable: {list(radar.fields)}")
+    sweep = select_lowest_sweep(radar, field)
     first, last = radar.get_start_end(sweep)
-    candidates = ["reflectivity", "REF", "DBZ", "corrected_reflectivity"]
-    field = next((key for key in candidates if key in radar.fields), None)
-    if not field:
-        raise ValueError("No reflectivity field in this Level II volume: " + str(list(radar.fields)))
     values = np.ma.array(radar.fields[field]["data"][first:last + 1], dtype=float)
     lats, lons, _ = radar.get_gate_lat_lon_alt(sweep)
     # Keep the native range-gate detail in the storm-scale display, rather than
@@ -80,7 +101,11 @@ def render(radar, png: Path, max_range_km: float=160, image_size_px: int=2300):
     ng = min(len(keep),values.shape[1])
     values=values[:,:ng];lats=lats[:,:ng];lons=lons[:,:ng]
     # Guard against masked, non-finite, or very low returns.
-    mask = np.ma.getmaskarray(values) | ~np.isfinite(values.filled(np.nan)) | (values.filled(-999) < 5)
+    mask = np.ma.getmaskarray(values) | ~np.isfinite(values.filled(np.nan))
+    if moment == "reflectivity":
+        mask |= values.filled(-999) < 5
+    else:
+        values = values * 1.94384449  # m/s to kt; preserve aliases
     values = np.ma.masked_where(mask, values)
     to_mercator = Transformer.from_crs('EPSG:4326','EPSG:3857',always_xy=True)
     to_geo = Transformer.from_crs('EPSG:3857','EPSG:4326',always_xy=True)
@@ -101,9 +126,10 @@ def render(radar, png: Path, max_range_km: float=160, image_size_px: int=2300):
     ax.axis("off")
     # Plot native gate centers in EPSG:3857 so Leaflet overlays align precisely;
     # masked/no-echo pixels remain transparent.
-    cmap = CMAP.copy()
+    cmap = (CMAP if moment == "reflectivity" else VEL_CMAP).copy()
     cmap.set_bad((0,0,0,0))
-    ax.pcolormesh(xm, ym, values, cmap=cmap, norm=NORM, shading="nearest",
+    norm = NORM if moment == "reflectivity" else VEL_NORM
+    ax.pcolormesh(xm, ym, values, cmap=cmap, norm=norm, shading="nearest",
                   rasterized=True, antialiased=False)
     png.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(png, transparent=True, facecolor=(0,0,0,0), edgecolor="none",
@@ -157,11 +183,24 @@ def run():
                 client.download_file(BUCKET, key, str(raw))
                 radar = pyart.io.read_nexrad_archive(str(raw))
                 relative = Path("data")/site/f"{stamp:%Y%m%d_%H%M%S}.png"
-                bounds, angle = render(radar, ROOT/relative, max_range_km=render_range, image_size_px=render_pixels)
+                bounds, angle = render(radar, ROOT/relative, moment="reflectivity",
+                                       max_range_km=render_range, image_size_px=render_pixels)
+                vel_url, vel_bounds, vel_angle, vel_error = None, None, None, None
+                vel_rel = Path("data")/site/f"{stamp:%Y%m%d_%H%M%S}_vel.png"
+                try:
+                    vel_bounds, vel_angle = render(radar, ROOT/vel_rel, moment="velocity",
+                                                   max_range_km=render_range, image_size_px=render_pixels)
+                    vel_url="./"+vel_rel.as_posix()
+                except Exception as err:
+                    vel_error = str(err)
+                    print(f"Velocity sweep unavailable at {stamp}: {err}", flush=True)
             frames.append(dict(site=site,time=stamp.isoformat().replace("+00:00","Z"),
                                url="./"+relative.as_posix(),bounds=bounds,
-                               elevation_deg=round(angle,2),field="reflectivity",render_radius_km=render_range,
-                               image_pixels=render_pixels,
+                               elevation_deg=round(angle,2),field="reflectivity",
+                               velocity_url=vel_url,velocity_bounds=vel_bounds,
+                               velocity_elevation_deg=round(vel_angle,2) if vel_angle is not None else None,
+                               velocity_units="kt",velocity_aliased=True,velocity_error=vel_error,
+                               render_radius_km=render_range,image_pixels=render_pixels,
                                source="Unidata NEXRAD Level II",s3_key=key))
             print(f"Decoded {len(frames)}/{len(chosen)}", flush=True)
         except Exception as exc:
