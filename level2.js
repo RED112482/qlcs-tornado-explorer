@@ -183,6 +183,15 @@
    const i=t<.5?0:1,f=t<.5?t*2:(t-.5)*2;
    return 'rgb('+stops[i].map((v,k)=>Math.round(v+(stops[i+1][k]-v)*f)).join(',')+')';
  }
+ const WEIGHTED_CATEGORIES=[
+   {key:'lower',label:'Lower',color:'#e2535c'},
+   {key:'medium',label:'Medium',color:'#f4c545'},
+   {key:'higher',label:'Higher',color:'#20d77b'}
+ ];
+ function weightedCategory(position){
+   const pos=clamp01(position);
+   return pos<1/3?WEIGHTED_CATEGORIES[0]:pos<2/3?WEIGHTED_CATEGORIES[1]:WEIGHTED_CATEGORIES[2];
+ }
  function analysisAt(fraction){
    if(!rows.length)return null;
    const x=clamp01(fraction)*(rows.length-1),i=Math.min(rows.length-2,Math.floor(x)),w=x-i;
@@ -198,16 +207,19 @@
        mode==='weighted'?(r.score>0?.7*candidateQ+.3*candidateT:0):candidateQ;
    });
    const rendered=relativeColorScale(candidates,value);
-   const color=mode==='tortuosity'
+   const categorical=mode==='weighted'&&$('weightedCategories').checked;
+   const category=categorical?weightedCategory(rendered):null;
+   const color=category?category.color:mode==='tortuosity'
       ?(eligible?tortRamp(rendered):'#687684')
       :colorRamp(rendered);
-   return {mode,color,value,relativeColor:rendered,score:q,tortBoost:tn,eligible};
+   return {mode,color,category:category?.label||null,value,relativeColor:rendered,score:q,tortBoost:tn,eligible};
  }
  window.qlcsDiagnosticAt=analysisAt;
  window.qlcsDiagnosticColor=analysisAt;
  function updateGradientLegend(){
    const mode=$('gradientMode').value,track=$('gradientTrack'),
          preview=$('gradientPreview'),explanation=$('gradientExplanation'),legend=$('analysisLegendText');
+   $('weightedCategorySettings').hidden=mode!=='weighted';
    if(mode==='tortuosity'){
      track.style.background='linear-gradient(90deg,#206843,#5bda5f,#43f4c5)';
      preview.children[0].textContent='Weak tortuosity boost';
@@ -215,11 +227,18 @@
      explanation.textContent='The local curvature enhancement varies gradually along the line. Colors highlight differences within this trace only; gray sections lack positive QTor-inspired shear support.';
      legend.textContent='Tortuosity enhancement: dark green → lime → turquoise = stronger continuous bowing/curvature (gray = no favorable shear reference)';
    }else if(mode==='weighted'){
-     track.style.background='linear-gradient(90deg,#e2535c,#f4c545,#20d77b)';
+     const categorical=$('weightedCategories').checked;
+     track.style.background=categorical
+       ?'linear-gradient(90deg,#e2535c 0%,#e2535c 33.33%,#f4c545 33.33%,#f4c545 66.67%,#20d77b 66.67%,#20d77b 100%)'
+       :'linear-gradient(90deg,#e2535c,#f4c545,#20d77b)';
      preview.children[0].textContent='Lower weighted index';
      preview.children[1].textContent='Higher weighted index';
-     explanation.textContent='Illustrative relative index: 70% normalized QTor-inspired score + 30% tortuosity enhancement. Line colors emphasize its within-track variation; the weights are not trained or calibrated probabilities.';
-     legend.textContent='Weighted relative index: red → yellow → green = increasing experimental diagnostic score (NOT percentage probability)';
+     explanation.textContent=categorical
+       ?'Three distinct classes (Lower <33%, Medium 33–67%, Higher ≥67%) partition the current line-relative normalized weighted index. The same classes color the immediate line and downstream swept area. They are NOT mesovortex genesis probabilities.'
+       :'Smooth line-relative weighted index = 70% normalized QTor-inspired score + 30% tortuosity enhancement, not trained or calibrated probabilities.';
+     legend.textContent=categorical
+       ?'WEIGHTED INDEX: RED = Lower | YELLOW = Medium | GREEN = Higher. Relative to THIS drawn line only, NOT tornado probabilities.'
+       :'Weighted relative index: red → yellow → green = increasing experimental diagnostic score (NOT percentage probability)';
    }else if(mode==='off'){
      track.style.background='#627987';
      preview.children[0].textContent='Analysis overlay off';
@@ -249,6 +268,7 @@
           interactive:true})
         .bindPopup('Relative index: '+diag.score.toFixed(2)+
           '<br>Continuous tortuosity enhancement: '+diag.tortBoost.toFixed(2)+
+          (diag.category?'<br><strong>Weighted category: '+diag.category+'</strong>':'')+
           '<br>Within-line color position: '+Math.round(diag.relativeColor*100)+' / 100'+
           '<br><strong>Not a calibrated mesovortex probability.</strong>')
         .addTo(windMarkerLayer);
@@ -258,6 +278,22 @@
        L.polygon([prev.point,cur.point,b,a],{
          stroke:false,fillColor:diag.color,fillOpacity:.12,
          interactive:false}).addTo(windMarkerLayer);
+     }
+   }
+   // Label each substantial contiguous weighted-class region once, rather
+   // than stamping a label at every sample point or radar gate.
+   if(visible&&mode==='weighted'&&$('weightedCategories').checked){
+     let start=0;
+     const labels=rows.map((_,i)=>analysisAt(i/(rows.length-1)).category);
+     const addRun=(from,to)=>{
+       if(!labels[from]||to-from<2)return;
+       const mid=Math.floor((from+to)/2),p=rows[mid].point;
+       L.marker(p,{pane:'gradientPane',interactive:false,keyboard:false,
+         icon:L.divIcon({className:'qlcs-category-label',html:'<span>'+labels[from]+'</span>',
+           iconSize:[90,22],iconAnchor:[45,28]})}).addTo(windMarkerLayer);
+     };
+     for(let i=1;i<=labels.length;i++){
+       if(i===labels.length||labels[i]!==labels[start]){addRun(start,i-1);start=i;}
      }
    }
    if($('showNormals').checked)for(let i=2;i<rows.length;i+=Math.max(3,Math.round(22/Math.max(1,+$('step').value)))){
