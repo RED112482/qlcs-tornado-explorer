@@ -201,3 +201,11 @@
 #level2ProcessStatus{background:#132c39;border-left:3px solid #65c3cf;padding:9px 11px;border-radius:7px;line-height:1.55}
 #liveLevel2Tools[hidden]{display:none!important}
 #liveLevel2Tools{border:1px solid #507a8e;border-radius:9px;padding:10px;margin:10px 0;background:#102a3a}
+
+/* v1.5.2 — native Level II velocity sign and magnitude legend */
+.radar-moment-legend{position:absolute;z-index:1001;left:14px;bottom:66px;max-width:min(295px,55vw);padding:10px 12px;background:#102431eb;border:1px solid #7da9ae;border-radius:9px;box-shadow:0 3px 14px #0009;color:#ebf6fa;font:600 11px/1.5 Poppins,Arial,sans-serif;pointer-events:none}
+.radar-moment-legend[hidden]{display:none!important}
+.radar-moment-legend strong{display:block;font-size:11px;margin-bottom:6px}
+.velocity-bar{height:13px;border:1px solid #718b9c;border-radius:4px;background:linear-gradient(to right,#0f522f,#008e49,#24ce68,#91f7b1,#cdd8da,#dedee0,#f2c9bc,#ee6865,#cb2e3b,#8c122a)}
+.velocity-ticks{display:flex;justify-content:space-between;font-size:9px;gap:8px;margin-top:3px}
+.radar-moment-legend small{display:block;font-size:9px;color:#bfd2de;margin-top:5px}
