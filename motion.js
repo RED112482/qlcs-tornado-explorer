@@ -151,8 +151,10 @@
    // green = higher relative index, red = lower relative index.
    // These are conditional swept footprints, NOT tornado-risk polygons.
    const segmentColor=k=>{
-     const value=scoreAt((k-.5)/(sampleCount-1));
-     return value===null?'#4aacc8':value>=threshold?'#35e58a':'#ef726f';
+     const f=(k-.5)/(sampleCount-1);
+     const diagnostic=window.qlcsDiagnosticAt?.(f);
+     if(diagnostic&&$('showScores').checked&&$('gradientMode').value!=='off')return diagnostic.color;
+     return '#6fbdcc'; // neutral when diagnostic overlay is disabled
    };
    for(let k=1;k<sampleCount;k++){
      const color=segmentColor(k);
@@ -191,9 +193,7 @@
    for(let step=0.5;step<hours-.01;step+=0.5){
      const layerPoints=now.map((p,k)=>geoProject(p,vectors[k],step));
      for(let k=1;k<layerPoints.length;k++){
-       const val=scoreAt((k-.5)/(layerPoints.length-1));
-       const favorable=val!==null&&val>=threshold;
-       const col=val===null?'#82c4ea':favorable?'#35e58a':'#f17770';
+       const col=segmentColor(k);
        L.polyline([layerPoints[k-1],layerPoints[k]],{pane:'forecastPane',color:col,
          weight:2,opacity:.55,dashArray:'3 7',interactive:false}).addTo(forecast);
      }
@@ -218,9 +218,15 @@
      $('motionForecastStatus').textContent='Manual '+manualDirection.toFixed(0)+'° TOWARD at '+manualSpeed.toFixed(0)+' kt: conditional '+hours.toFixed(1)+'-h position, ±'+(spread*hours).toFixed(0)+' km uncertainty. Assumes no change in system direction, speed, orientation or environment.';
    }
  }
+ // One user-visible Clear button resets the drawn line (app.js), both captures,
+ // previous paths, projection fills and saved motion state.
+ $('clear').addEventListener('click',()=>{$('resetMotion').click();});
  $('captureA').onclick=()=>capture('A');
  $('captureB').onclick=()=>capture('B');
  $('calculateMotion').onclick=compute;
+ // Keep the downstream fill synchronized with the chosen line-gradient view.
+ for(const id of ['gradientMode','showScores','step','tortuosity','threshold'])
+   $(id).addEventListener('input',()=>{queueMicrotask(compute);});
  $('resetMotion').onclick=()=>{A=null;B=null;$('forecastHours').value='1';$('motionMethod').value='manual';$('forecastHoursValue').textContent='1.0 h';forecast.clearLayers();previous.clearLayers();$('motionCaptureStatus').textContent='Captures cleared. Draw a leading edge and save Scan A.';$('motionForecastStatus').textContent='Two-frame motion not yet calculated.';};
  for(const id of ['motionMethod','motionSpeedKt','forecastHours','forecastSpread','shapeLock','showForecast'])
    $(id).addEventListener('input',compute);
