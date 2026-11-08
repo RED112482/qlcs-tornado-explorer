@@ -29,6 +29,8 @@
   motion:'Direction the QLCS is moving TOWARD (degrees clockwise from north). It selects the forward normal side, sets yellow motion arrows, and projects schematic downstream polygons. It is NOT derived from RAP winds.',
   fetchRap:'Load a site- and time-matched processed NOAA RAP F00 profile. Winds populate the editable boxes. Site/time matching is checked and the source is displayed.',
   loadRap:'Import your own wind profile JSON. Imports are labeled unverified because no external provenance check is possible.',
+  showRadar:'Turn Level II and Level III reflectivity imagery on or off without affecting county, state, CWA, line, wind, or downstream diagnostic overlays.',
+  favorableFillOpacity:'Increase the green Higher-category downstream corridor opacity; Medium and Lower remain progressively lighter. This improves the *visual separation* of the existing relative index, not future prediction accuracy.',
   showBarbs:'Display wind barbs at regular grid points. When archived spatial RAP data match the radar and UTC time, every point uses independently sampled RAP winds. Otherwise the viewer explicitly identifies repeated representative winds.',
   showBarb0:'Show or hide 10-m (near-surface) wind barbs. All selected levels share the same station anchor.',
   showBarb1:'Show or hide 1-km AGL wind barbs. These overlay the other levels at precisely the same grid point.',
