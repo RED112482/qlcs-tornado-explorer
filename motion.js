@@ -274,5 +274,15 @@
  $('forecastHours').value='1';
  $('motionMethod').value='manual';
  $('forecastHoursValue').textContent='1.0 h';
- window.qlcsMotion={compute};
+ window.qlcsMotion={
+   compute,
+   localMotionAt(fraction){
+     if(!A||!B)return null;
+     try{
+       const derived=deriveVectors();
+       const motion=interpolateMotion(derived,Math.max(0,Math.min(1,fraction)));
+       return {...motion,source:'A/B line-element displacement',minutes:derived.dt*60};
+     }catch(e){return null;}
+   }
+ };
 })();
