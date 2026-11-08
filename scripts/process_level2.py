@@ -200,6 +200,7 @@ def run():
                                velocity_url=vel_url,velocity_bounds=vel_bounds,
                                velocity_elevation_deg=round(vel_angle,2) if vel_angle is not None else None,
                                velocity_units="kt",velocity_aliased=True,velocity_error=vel_error,
+                               is_live=bool(args.latest),
                                render_radius_km=render_range,image_pixels=render_pixels,
                                source="Unidata NEXRAD Level II",s3_key=key))
             print(f"Decoded {len(frames)}/{len(chosen)}", flush=True)
@@ -218,6 +219,21 @@ def run():
     existing = {(f["site"],f["time"]):f for f in old.get("frames", [])}
     for f in frames:
         existing[(f["site"],f["time"])] = f
+    # Keep the optional near-live stream bounded. Historic case frames are
+    # never pruned by the live retention rule.
+    if args.latest:
+        live_frames = sorted([item for item in existing.values()
+                              if item.get("is_live") and item.get("site")==site],
+                             key=lambda x:x["time"])
+        for item in live_frames[:-18]:
+            existing.pop((item["site"], item["time"]), None)
+            for key in ("url", "velocity_url"):
+                name = item.get(key)
+                if not name or not name.startswith("./data/"+site+"/"):
+                    continue
+                old = ROOT / name.removeprefix("./")
+                if old.is_file():
+                    old.unlink()
     # Preserve historical case diversity instead of dropping older cases by
     # global chronological recency. A bounded per-site/day cap protects repo size.
     by_case = {}
