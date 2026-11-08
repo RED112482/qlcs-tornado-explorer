@@ -209,3 +209,12 @@
 .velocity-bar{height:13px;border:1px solid #718b9c;border-radius:4px;background:linear-gradient(to right,#0f522f,#008e49,#24ce68,#91f7b1,#cdd8da,#dedee0,#f2c9bc,#ee6865,#cb2e3b,#8c122a)}
 .velocity-ticks{display:flex;justify-content:space-between;font-size:9px;gap:8px;margin-top:3px}
 .radar-moment-legend small{display:block;font-size:9px;color:#bfd2de;margin-top:5px}
+
+/* v1.6 — cached vs on-demand time-matched RAP workflow */
+.missing-rap-tools{margin-top:8px;border:1px solid #3a6f80;background:#122d3c;
+ border-radius:9px;padding:9px 10px;color:#daeff7}
+.missing-rap-tools .buttons{display:flex;gap:8px;flex-wrap:wrap}
+.missing-rap-tools .buttons>button{flex:1 1 125px;padding:8px 6px;font-size:11px}
+.missing-rap-tools button[hidden]{display:none!important}
+.missing-rap-tools .hint{font-size:11px;line-height:1.55}
+#requestMissingRap{background:#225e62;border:1px solid #7bdbca;color:#e7fff9;font-weight:700}
