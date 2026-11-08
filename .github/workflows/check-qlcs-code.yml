@@ -19,7 +19,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Compile Python processing scripts
-        run: python -m py_compile scripts/process_level2.py scripts/parse_level2_issue.py scripts/process_rap.py
+        run: python -m py_compile scripts/process_level2.py scripts/parse_level2_issue.py scripts/process_rap.py scripts/parse_rap_issue.py
       - name: Check browser JavaScript syntax
         run: |
           for file in app.js level2.js calendar.js interactions.js motion.js; do
