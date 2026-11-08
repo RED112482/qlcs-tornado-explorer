@@ -1,7 +1,7 @@
 {
   "site": "KHDC",
-  "start_utc": "2024-06-04T21:00",
-  "end_utc": "2024-06-04T21:18",
-  "max_scans": 2,
-  "description": "Validate latest native split-cut reflectivity and radial velocity output on genuine historical KHDC volumes"
+  "start_utc": "2024-06-04T21:08",
+  "end_utc": "2024-06-04T21:33",
+  "max_scans": 4,
+  "description": "Backfill velocity for remaining default KHDC 2024-06-04 Level II frames"
 }
