@@ -71,6 +71,13 @@
      }
      u=base.u*(1-c)+wu*c;v=base.v*(1-c)+wv*c;
      detail='user blend of QLCS translation and 10-m/1-km flow';
+   }else if(mode==='lineAB'){
+     const measured=window.qlcsMotion?.localMotionAt?.(f);
+     if(measured){
+       const vAB=vector(measured.dir,measured.speed);
+       u=vAB.u;v=vAB.v;
+       detail='two-frame traced line displacement (NOT tracked vortex motion)';
+     }else detail='A/B line captures missing; falling back to manual system motion';
    }else if(mode==='bow'){
      if(apexFraction!==null){
        const northernIsIncreasing=geometry.coords.at(-1).lat>geometry.coords[0].lat;
@@ -137,7 +144,9 @@
    const mode=$('mvScenario').value,lead=$('mvMinutes').value;
    const message=mode==='bow'&&apexFraction===null
      ?'Select “Mark bow apex on line” and click the apex to enable illustrative north-flank drift.'
-     :'Scenario vectors shown for '+lead+' min; click anywhere on the traced line to inspect a local arrow.';
+     :mode==='lineAB'&&!window.qlcsMotion?.localMotionAt?.(.5)
+       ?'Capture the leading edge at two different UTC scans (A/B) first; vectors otherwise use manual QLCS motion.'
+       :'Scenario vectors shown for '+lead+' min; click anywhere on the traced line to inspect a local arrow.';
    $('mvStatus').textContent=message+' These vectors are NOT observed or validated tornado tracks.';
  }
  function clickAt(e){
