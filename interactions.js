@@ -33,7 +33,7 @@
   loadRap:'Import your own wind profile JSON. Imports are labeled unverified because no external provenance check is possible.',
   mvEnabled:'Enable or hide exploratory circulation-motion vectors on the drawn line. Click any point on the line to show an individual heading/speed arrow. These are NOT calculated tornado tracks.',
   mvShowMultiple:'Draw multiple independent local scenario vectors along the traced line, in addition to any individually selected point.',
-  mvScenario:'Manual: system motion plus a user-set heading offset. Steering: arbitrary weighted blend of QLCS motion and 10-m/1-km winds. Bow: hypothetical along-line northern-flank drift that requires marking the bow apex. None is a validated tornado motion algorithm.',
+  mvScenario:'Manual: system motion plus a user-set heading offset. Steering: arbitrary weighted blend of QLCS motion and 10-m/1-km winds. Bow: hypothetical along-line northern-flank drift that requires marking the bow apex. A/B line motion: actual displacement of corresponding positions along two hand-traced leading edges, NOT movement of a tracked vortex. None is a validated tornado motion algorithm.',
   mvAngle:'Manual difference from QLCS direction in degrees, positive clockwise, negative counterclockwise. Example: NE 045° plus -45° produces due-north 000°.',
   mvSpeed:'Base translational speed for the hypothetical circulation in knots. It does not come from automatic mesovortex tracking.',
   mvSteering:'User-adjustable fraction of the 10-m/1-km averaged wind vector combined with system motion. No research-validated blend weight exists for individual tornado paths.',
