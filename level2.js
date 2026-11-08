@@ -19,7 +19,7 @@
      level2Manifest=m;return m;
    }catch(e){level2Manifest={frames:[]};$('level2Info').textContent='Level II archive not published yet. Run the radar decoder in GitHub Actions or switch to Level III fallback. '+e.message;return level2Manifest;}
  }
- function clearLevel2(){if(level2Overlay){map.removeLayer(level2Overlay);level2Overlay=null;}}
+ function clearLevel2(){if(level2Overlay){map.removeLayer(level2Overlay);level2Overlay=null;} $('radarMomentLegend').hidden=true;}
  function chooseFrame(){
    const site=normSite($('site').value);
    let candidates=level2Frames().filter(f=>normSite(f.site||level2Manifest.site)===site);
@@ -40,6 +40,7 @@
      return;
    }
    const velocity=$('radarMoment').value==='velocity';
+   $('radarMomentLegend').hidden=!velocity;
    const url=velocity?frame.velocity_url:frame.url;
    const bounds=velocity?frame.velocity_bounds:frame.bounds;
    const elevation=velocity?frame.velocity_elevation_deg:frame.elevation_deg;
