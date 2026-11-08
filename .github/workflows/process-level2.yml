@@ -30,8 +30,8 @@ on:
         default: "2024-06-04T22:00"
         type: string
       max_scans:
-        description: "Maximum Level II scans (1–96; 0 = all up to 96)"
-        default: "72"
+        description: "Maximum Level II volumes per run (1–32; 12 recommended)"
+        default: "12"
         required: true
         type: string
       rap_profile:
@@ -46,7 +46,7 @@ concurrency:
 jobs:
   radar:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
@@ -72,7 +72,7 @@ jobs:
             MODE=historical
             START=$(python -c "import json;print(json.load(open('data/level2-request.json'))['start_utc'])")
             END=$(python -c "import json;print(json.load(open('data/level2-request.json'))['end_utc'])")
-            LIMIT=$(python -c "import json;print(json.load(open('data/level2-request.json')).get('max_scans',72))")
+            LIMIT=$(python -c "import json;print(json.load(open('data/level2-request.json')).get('max_scans',12))")
           fi
           echo "site=$SITE" >> "$GITHUB_OUTPUT"
           echo "mode=$MODE" >> "$GITHUB_OUTPUT"
