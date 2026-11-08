@@ -201,3 +201,12 @@ The colored line has four presentation modes:
 The same active line gradient colors are transferred to the hypothetical downstream persistence corridor. These visualizations **do not calculate forecast probabilities, true spatially sampled QTor, radar-observed UDCZ, or a likelihood trained on historic genesis/null cases**. Turning this into a probabilistic product requires an observed dataset of mesovortex-genesis and null line segments, train/test separation, statistical calibration (for example logistic or isotonic calibration), reliability evaluation and retrospective validation.
 
 The model's continuous tortuosity enhancement and normalized weighted score are **exploratory local implementation choices**, NOT claimed reproduction of exact published QTor statistical coefficients. Relevant published background: [Britt et al. WoFS/QLCS QTor study](https://journals.ametsoc.org/view/journals/wefo/41/4/WAF-D-25-0092.1.xml), [NWS QLCS mesovortex reference sheets](https://www.weather.gov/media/sgf/research/TWIP_QLCS_Reference_Sheets.pdf).
+
+
+## Help / Illustrated Concept Guide (v1.2.0)
+
+**[Open the illustrated QTor Concept Guide](./help.html)** or use **Help / Concept Guide** at the top of the live Explorer. It provides a printable, responsive one-page **vector diagram** matching the prior conceptual explanation, with the continuous color ramp drawn directly along the QLCS line and focused explanations of the QTor-inspired relative index, tortuosity enhancement, and the exploratory 70/30 weighted relative index.
+
+The guide is a native SVG/HTML illustration, so it remains sharp at any zoom, works without image hosting, and is editable in GitHub. It uses the same color palette as the Explorer. The line-rendering code now draws a thick black halo and continuous score-colored line above radar imagery, using a within-line 10th–90th percentile color stretch to make genuine along-line variations easier to see. Color percentiles are visual-only: numeric scores are unchanged and colors across different drawn lines are not directly comparable. If the line is uniform, its color remains uniform; we do not create false variation. The overlay is above radar/background but beneath wind barbs.
+
+**Scientific caution:** The current blended index uses uncalibrated choices and does not establish mesovortex or tornado probabilities. Tortuosity is geometric, and this experimental continuous enhancement is not a published QTor regression or validated probability model.
