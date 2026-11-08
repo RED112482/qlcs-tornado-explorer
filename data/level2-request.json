@@ -1,7 +1,7 @@
 {
   "site": "KHDC",
-  "start_utc": "2024-06-04T20:00",
-  "end_utc": "2024-06-04T23:00",
-  "max_scans": 96,
-  "description": "Process full available native Level II volumes for three neighboring Zulu hours (20, 21, 22) instead of 5 downsampled frames"
+  "start_utc": "2024-06-04T21:00",
+  "end_utc": "2024-06-04T21:18",
+  "max_scans": 2,
+  "description": "Validate latest native split-cut reflectivity and radial velocity output on genuine historical KHDC volumes"
 }
