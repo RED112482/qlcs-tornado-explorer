@@ -58,7 +58,7 @@
  $('findScans').onclick=load;
  $('copyLevel2Request').addEventListener('click',async()=>{
    if(!sync())return;
-   const selected='site: K'+$('site').value+'\nmode: historical\nstart_utc: '+$('startUTC').value.replace(/Z$/,'')+'\nend_utc: '+$('endUTC').value.replace(/Z$/,'')+'\nmax_scans: 72';
+   const selected='site: K'+$('site').value+'\nmode: historical\nstart_utc: '+$('startUTC').value.replace(/Z$/,'')+'\nend_utc: '+$('endUTC').value.replace(/Z$/,'')+'\nmax_scans: 12';
    try{
      await navigator.clipboard.writeText(selected);
      $('copyLevel2Request').textContent='Copied Level II request ✓';
