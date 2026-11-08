@@ -166,3 +166,14 @@
 #resetMotion[hidden]{display:none!important}
 #internalDiagnostics[hidden]{display:none!important}
 .leaflet-draw-toolbar a.leaflet-draw-edit-remove{display:none!important}
+
+/* v1.2 - directly accessible concept one-pager */
+.topright .concept-help-button{display:inline-flex;align-items:center;justify-content:center;
+  padding:9px 13px;border:1px solid #68c7d0;border-radius:9px;background:#164550;
+  color:#d9ffff!important;text-decoration:none;font:700 12px/1.4 Poppins,Arial,sans-serif;
+  white-space:nowrap;box-shadow:0 1px 5px #0005}
+.topright .concept-help-button:hover{background:#236775;color:#fff!important}
+.analysis-guide-link{display:block;background:#1b4852;color:#d6ffff!important;
+  border:1px solid #56b6c2;border-radius:9px;padding:11px 12px;font:600 12px/1.5 Poppins,Arial,sans-serif;
+  text-decoration:none;margin-bottom:12px}
+.analysis-guide-link:hover{background:#235f67}
