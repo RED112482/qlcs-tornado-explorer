@@ -657,6 +657,14 @@
    rapRequestStatus.textContent='RAP request prepared for '+site+' '+cycle+
      '. Sign in to GitHub, click Submit new issue, then use Check RAP after the workflow publishes the actual available cycle.';
  });
+ // In live mode an existing recent RAP cache is applied automatically only if
+ // the user has not manually changed environmental winds.
+ $('mode').addEventListener('change',()=>{
+   if($('mode').value==='live'&&!manualWindOverride)fetchRapFromRepo();
+ });
+ $('site').addEventListener('change',()=>{
+   if($('mode').value==='live'&&!manualWindOverride)fetchRapFromRepo();
+ });
  rapCheck.addEventListener('click',fetchRapFromRepo);
  $('fetchRap').onclick=fetchRapFromRepo;
  $('loadRap').onclick=()=>$('rapInput').click();
