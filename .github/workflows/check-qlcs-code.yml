@@ -19,10 +19,10 @@ jobs:
         with:
           python-version: '3.11'
       - name: Compile Python processing scripts
-        run: python -m py_compile scripts/process_level2.py scripts/parse_level2_issue.py scripts/process_rap.py scripts/parse_rap_issue.py
+        run: python -m py_compile scripts/process_level2.py scripts/parse_level2_issue.py scripts/process_rap.py scripts/parse_rap_issue.py scripts/process_rap_recent.py
       - name: Check browser JavaScript syntax
         run: |
-          for file in app.js level2.js calendar.js interactions.js motion.js; do
+          for file in app.js level2.js calendar.js interactions.js motion.js vortex-motion.js; do
             node --check "$file"
           done
       - name: Parse GitHub Actions workflow YAML
