@@ -1,0 +1,72 @@
+name: Optional delayed live NOAA RAP F00 winds
+on:
+  schedule:
+    # Opt in by setting QLCS_LIVE_RAP_SITE=KMOB in repo Actions variables.
+    - cron: '26 * * * *'
+  workflow_dispatch:
+    inputs:
+      site:
+        description: "Radar for site-nearest RAP winds (KMOB, KHDC, etc.)"
+        required: true
+        default: "KMOB"
+        type: string
+permissions:
+  contents: write
+  pages: write
+concurrency:
+  group: qlcs-live-rap
+  cancel-in-progress: false
+jobs:
+  recent-rap:
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.QLCS_LIVE_RAP_SITE != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements-rap.txt
+      - name: Validate configured site and UTC reference cycle
+        id: params
+        env:
+          EVENT: ${{ github.event_name }}
+          SAVED_SITE: ${{ vars.QLCS_LIVE_RAP_SITE }}
+          INPUT_SITE: ${{ inputs.site }}
+        run: |
+          SITE="$SAVED_SITE"
+          if [ "$EVENT" = "workflow_dispatch" ]; then SITE="$INPUT_SITE"; fi
+          SITE=$(echo "$SITE" | tr '[:lower:]' '[:upper:]')
+          if [[ ! "$SITE" =~ ^K[A-Z0-9]{3}$ ]]; then exit 2; fi
+          echo "site=$SITE" >> "$GITHUB_OUTPUT"
+          echo "reference=$(date -u +%Y-%m-%dT%H:00Z)" >> "$GITHUB_OUTPUT"
+      - name: Install RAP analysis dependencies
+        run: pip install -r requirements-rap.txt
+      - name: Retrieve newest available NOAA RAP F00
+        env:
+          SITE: ${{ steps.params.outputs.site }}
+          REFERENCE: ${{ steps.params.outputs.reference }}
+        run: python scripts/process_rap_recent.py --site "$SITE" --reference "$REFERENCE" --hours-back 5
+      - name: Publish actual valid-time RAP and spatial grid
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/rap.json
+          if [ -f data/rap-grid.json ]; then git add data/rap-grid.json; fi
+          if ! git diff --cached --quiet; then
+            git commit -m "Update delayed live RAP F00 environmental winds"
+            for n in 1 2 3 4 5 6; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then break; fi
+              if [ "$n" = 6 ]; then exit 1; fi
+              sleep $((n*2))
+            done
+          fi
+      - name: Rebuild Pages after publication
+        if: success()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: gh api --method POST "/repos/$REPO/pages/builds"
