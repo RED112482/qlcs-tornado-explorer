@@ -536,41 +536,51 @@
    setWindSource((rapProfilesFromRepo?'NOAA RAP ARCHIVE · ':'USER-IMPORTED RAP JSON (not independently verified) · ')+'K'+normSite(profile.site||$('site').value)+' · '+niceTime(profile.valid_time||profile.time||'')+' · '+(profile.product||'awp130pgrb')+' F'+String(profile.forecast_hour??0).padStart(2,'0')+' · 10 m / 1 km / 3 km AGL · Editable inputs');
    calc();save();
  }
+ const LIVE_RAP_MAX_AGE_MS=4*3600*1000;
+ function selectRAP(profiles,site,requested,live){
+   const valid=profiles.filter(p=>normSite(p.site||'')===site)
+     .map(p=>({p,t:Date.parse(p.valid_time||p.time||'')}))
+     .filter(x=>Number.isFinite(x.t));
+   const target=Date.parse(requested);
+   if(!Number.isFinite(target))return null;
+   // Live: model analysis cannot be from the future and must be reasonably
+   // recent; use most recent REAL published cycle up to four hours old.
+   if(live)return valid.filter(x=>x.t<=target&&target-x.t<=LIVE_RAP_MAX_AGE_MS)
+     .sort((a,b)=>b.t-a.t)[0]||null;
+   // Archive: time-matched F00 within 60 min, retaining original semantics.
+   return valid.filter(x=>Math.abs(x.t-target)<=3600000)
+     .sort((a,b)=>Math.abs(a.t-target)-Math.abs(b.t-target))[0]||null;
+ }
+ function describeRAP(entry,reference){
+   const age=Math.max(0,Math.round((Date.parse(reference)-entry.t)/60000));
+   return niceTime(entry.t)+' • '+age+' minutes behind selected time';
+ }
  function matchRap(time){
    if(manualWindOverride)return;
-   const target=Date.parse(time||'');
-   if(!Number.isFinite(target))return;
-   const site=normSite($('site').value);
-   const candidates=rapProfiles.filter(p=>normSite(p.site||'')===site)
-     .map(p=>({p,d:Math.abs(Date.parse(p.valid_time||p.time||'')-target)}))
-     .filter(x=>Number.isFinite(x.d)).sort((a,b)=>a.d-b.d);
-   const match=candidates[0];
-   if(match&&match.d<=60*60000){
-     try{applyRap(match.p);updateRapRequestUI(false,'Time-matched RAP available for K'+site+'.');}
-     catch(e){console.warn('RAP profile failed validation',e);}
+   const target=$('mode').value==='live'?new Date().toISOString():time;
+   const site=normSite($('site').value),live=$('mode').value==='live';
+   const match=selectRAP(rapProfiles,site,target,live);
+   if(match){
+     try{
+       applyRap(match.p);
+       updateRapRequestUI(false,(live?'Newest cached NOAA RAP: ':'Matched NOAA RAP: ')+describeRAP(match,target));
+     }catch(e){console.warn('RAP profile validation failure',e);}
    }else{
-     // Retain displayed editable values but do not present them as the
-     // new selected case's genuine model environment.
      rapProfile=null;
-     const cycle=new Date(Math.floor(target/3600000)*3600000).toISOString().slice(0,16)+'Z';
-     setWindSource('NO MATCHING RAP YET · K'+site+' · '+cycle+
-       ' • displayed values are retained placeholders, NOT verified for this UTC case');
-     updateRapRequestUI(true,'No cached RAP F00 profile for K'+site+' at '+cycle+
-       '. Click Load time-matched RAP to recheck, or Retrieve missing RAP to process it on GitHub.');
+     const cycle=selectedRapCycle()||'unknown';
+     setWindSource('NO '+(live?'RECENT':'MATCHED')+' RAP CACHED · K'+site+
+       ' · target '+cycle+' • displayed editable winds are UNVERIFIED for this case');
+     updateRapRequestUI(true,live
+       ?'No NOAA RAP F00 within the past 4 hours has been processed for K'+site+'. Request the most recent available RAP (tries older cycles if the current F00 is delayed).'
+       :'No cached RAP F00 for this historical site and UTC time. Request the matching archival cycle.');
    }
  }
- // The current radar scan in archive mode, otherwise the explicitly selected
- // UTC window, or the current UTC hour for live mode. NEVER use a stale
- // published profile merely because it is the newest one at a site.
  function selectedRapTime(){
    if($('mode').value==='archive'){
      const selected=scanTimes.length?scanTimes[Number($('scanSlider').value)||0]:null;
      const begin=Date.parse($('startUTC').value),end=Date.parse($('endUTC').value);
-     // A calendar change can precede the asynchronous scan lookup. Do not
-     // accidentally request the RAP cycle of the previous selected date.
      const candidate=Date.parse(selected||'');
-     const epoch=Number.isFinite(candidate)&&candidate>=begin&&candidate<end
-       ?candidate:begin;
+     const epoch=Number.isFinite(candidate)&&candidate>=begin&&candidate<end?candidate:begin;
      return Number.isFinite(epoch)?new Date(epoch).toISOString():null;
    }
    return new Date().toISOString();
@@ -586,45 +596,42 @@
  function updateRapRequestUI(missing,message){
    rapRequestButton.hidden=!missing;
    rapCheck.hidden=!missing;
+   rapRequestButton.textContent=$('mode').value==='live'
+     ?'Retrieve newest available RAP F00 on GitHub':'Retrieve matched archived RAP F00';
    rapRequestStatus.textContent=message||'';
  }
  async function fetchRapFromRepo(){
-   $('windSource').textContent='Looking for RAP F00 for selected site and UTC time…';
+   const live=$('mode').value==='live';
+   $('windSource').textContent=live?'Checking newest cached RAP F00 (accepting normal analysis lag)…':
+     'Checking archived RAP F00 for selected UTC time…';
+   const requested=selectedRapTime(),cycle=selectedRapCycle(),site=normSite($('site').value);
+   if(!requested||!cycle){
+     $('windSource').textContent='Select a valid UTC radar time before retrieving RAP.';
+     return false;
+   }
    try{
-     const requested=selectedRapTime(),cycle=selectedRapCycle();
-     const site=normSite($('site').value);
-     if(!requested||!cycle)throw Error('Select a valid UTC archive window or live time first');
      const response=await fetch('./data/rap.json?t='+Date.now(),{cache:'no-store'});
-     if(!response.ok)throw Error('No RAP data cache published yet');
+     if(!response.ok)throw Error('RAP repository cache unavailable');
      const payload=await response.json();
      const profiles=Array.isArray(payload.profiles)?payload.profiles:[payload];
-     const candidate=profiles.filter(p=>normSite(p.site||'')===site)
-       .map(p=>({p,delta:Math.abs(Date.parse(p.valid_time||p.time||'')-Date.parse(requested))}))
-       .filter(x=>Number.isFinite(x.delta))
-       .sort((x,y)=>x.delta-y.delta)[0];
-     // F00 cycle is at whole hour. Require a model cycle no more than one
-     // hour from the radar volume, never silently substitute another case.
-     if(!candidate||candidate.delta>3600000){
-       updateRapRequestUI(true,'No processed RAP profile for K'+site+
-         ' near '+requested.slice(0,16)+'Z. Click Retrieve missing RAP to process the '+cycle+' analysis from the NOAA archive using GitHub.');
-       $('windSource').textContent='RAP NOT YET CACHED · K'+site+' · '+cycle+
-         ' • manual winds preserved';
+     const match=selectRAP(profiles,site,requested,live);
+     rapProfiles=profiles;rapProfilesFromRepo=true;
+     if(!match){
+       updateRapRequestUI(true,live
+         ?'No cached RAP profile for K'+site+' in the last 4 hours. GitHub can try current and preceding F00 analyses until one is actually available.'
+         :'No time-matched RAP profile for K'+site+' near '+niceTime(requested)+'. Request archival F00.');
+       setWindSource('RAP NOT YET CACHED · K'+site+' · '+cycle+' • editable winds preserved');
        return false;
      }
-     rapProfiles=profiles;
-     rapProfilesFromRepo=true;
-     manualWindOverride=false;
-     applyRap(candidate.p);
-     updateRapRequestUI(false,'Verified NOAA RAP F00 cached for K'+site+
-       ' at '+niceTime(candidate.p.valid_time||candidate.p.time||'')+'.');
+     applyRap(match.p);
+     updateRapRequestUI(false,(live?'Latest available RAP loaded: ':'Archived RAP loaded: ')+describeRAP(match,requested)+
+       (live?'. Model data may lag the radar; these are not current-time observations.':''));
      await loadSpatialGrid();
      return true;
    }catch(error){
-     const site='K'+normSite($('site').value),cycle=selectedRapCycle();
-     updateRapRequestUI(!!cycle,'RAP cache lookup unavailable: '+error.message+
-       (cycle?'. You can request NOAA RAP F00 at '+cycle+'.':''));
-     $('windSource').textContent='RAP NOT LOADED · '+site+' · '+error.message+
-       ' • manual winds preserved';
+     updateRapRequestUI(true,'RAP cache lookup failed: '+error.message+
+       '. Use the GitHub retrieval request to fetch actual NOAA RAP.');
+     setWindSource('RAP NOT LOADED · K'+site+' • '+error.message+' • manual values preserved');
      return false;
    }
  }
@@ -635,17 +642,20 @@
      rapRequestStatus.textContent='Select a radar and valid UTC time first.';
      return;
    }
-   const title='[QLCS RAP] '+site+' '+cycle;
-   const body='QLCS RAP F00 environmental analysis request\\nSITE='+site+
-     '\\nCYCLE_UTC='+cycle+
-     '\\n\\nOwner-authorized request to retrieve NOAA RAP and publish 10 m/1 km/3 km AGL winds.';
+   const live=$('mode').value==='live';
+   const title='[QLCS RAP] '+site+' '+cycle+(live?' latest available':' archival');
+   const body=['QLCS RAP F00 model analysis request',
+     'SITE='+site,'CYCLE_UTC='+cycle,'LATEST='+(live?'1':'0'),'',
+     live?'Process the most recent ACTUALLY AVAILABLE RAP F00 (try older cycles if newest not yet published).':
+       'Process the exact historical RAP F00 UTC cycle.',
+     'Owner-authorized request: process NOAA RAP and publish 10 m/1 km/3 km AGL winds.'].join('\n');
    const url=new URL('https://github.com/RED112482/qlcs-tornado-explorer/issues/new');
    url.searchParams.set('title',title);
    url.searchParams.set('body',body.replaceAll('\\n','\n'));
    const tab=window.open(url.toString(),'_blank');
    if(tab)tab.opener=null;else window.location.href=url.toString();
    rapRequestStatus.textContent='RAP request prepared for '+site+' '+cycle+
-     '. Sign in to GitHub, click Submit new issue, then use Check RAP after the workflow publishes the profile.';
+     '. Sign in to GitHub, click Submit new issue, then use Check RAP after the workflow publishes the actual available cycle.';
  });
  rapCheck.addEventListener('click',fetchRapFromRepo);
  $('fetchRap').onclick=fetchRapFromRepo;
