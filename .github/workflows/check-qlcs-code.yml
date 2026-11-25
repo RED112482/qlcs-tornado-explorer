@@ -20,6 +20,16 @@ jobs:
           python-version: '3.11'
       - name: Compile Python processing scripts
         run: python -m py_compile scripts/process_level2.py scripts/parse_level2_issue.py scripts/process_rap.py scripts/parse_rap_issue.py scripts/process_rap_recent.py
+      - name: Exercise latest RAP issue validation
+        run: |
+          set -e
+          REFERENCE="$(date -u +%Y-%m-%dT%H:00Z)"
+          export ISSUE_BODY="$(printf 'RAP latest case\nSITE=KMOB\nCYCLE_UTC=%s\nLATEST=1\n' "$REFERENCE")"
+          export GITHUB_OUTPUT="$(mktemp)"
+          python scripts/parse_rap_issue.py
+          grep -qx "site=KMOB" "$GITHUB_OUTPUT"
+          grep -qx "latest=1" "$GITHUB_OUTPUT"
+          echo "Latest RAP request mode validated"
       - name: Check browser JavaScript syntax
         run: |
           for file in app.js level2.js calendar.js interactions.js motion.js vortex-motion.js; do
