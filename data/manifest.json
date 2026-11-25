@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-11-25T18:09:10.634738+00:00",
+  "updated": "2026-11-25T18:30:01.293335+00:00",
   "frames": [
     {
       "site": "KHDC",
@@ -1592,6 +1592,80 @@
       "image_pixels": 2300,
       "source": "Unidata NEXRAD Level II",
       "s3_key": "2024/06/04/KMOB/KMOB20240604_215625_V06"
+    },
+    {
+      "site": "KMOB",
+      "time": "2026-11-25T18:17:52Z",
+      "url": "./data/KMOB/20261125_181752.png",
+      "bounds": [
+        [
+          29.227773860020587,
+          -89.92765464896502
+        ],
+        [
+          32.13068714828881,
+          -86.55230166186703
+        ]
+      ],
+      "elevation_deg": 0.16,
+      "field": "reflectivity",
+      "velocity_url": "./data/KMOB/20261125_181752_vel.png",
+      "velocity_bounds": [
+        [
+          29.227773860020587,
+          -89.92765464896502
+        ],
+        [
+          32.13068714828881,
+          -86.55230166186703
+        ]
+      ],
+      "velocity_elevation_deg": 0.16,
+      "velocity_units": "kt",
+      "velocity_aliased": true,
+      "velocity_error": null,
+      "is_live": true,
+      "render_radius_km": 160,
+      "image_pixels": 2300,
+      "source": "Unidata NEXRAD Level II",
+      "s3_key": "2026/11/25/KMOB/KMOB20261125_181752_V06"
+    },
+    {
+      "site": "KMOB",
+      "time": "2026-11-25T18:23:26Z",
+      "url": "./data/KMOB/20261125_182326.png",
+      "bounds": [
+        [
+          29.227745449998096,
+          -89.92779864388339
+        ],
+        [
+          32.13070380448115,
+          -86.5523406819302
+        ]
+      ],
+      "elevation_deg": 0.16,
+      "field": "reflectivity",
+      "velocity_url": "./data/KMOB/20261125_182326_vel.png",
+      "velocity_bounds": [
+        [
+          29.227733537975194,
+          -89.92771600059677
+        ],
+        [
+          32.130696138603525,
+          -86.55229329522807
+        ]
+      ],
+      "velocity_elevation_deg": 0.16,
+      "velocity_units": "kt",
+      "velocity_aliased": true,
+      "velocity_error": null,
+      "is_live": true,
+      "render_radius_km": 160,
+      "image_pixels": 2300,
+      "source": "Unidata NEXRAD Level II",
+      "s3_key": "2026/11/25/KMOB/KMOB20261125_182326_V06"
     }
   ]
 }
