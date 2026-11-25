@@ -35,7 +35,13 @@ jobs:
         env:
           SITE: ${{ steps.request.outputs.site }}
           CYCLE: ${{ steps.request.outputs.cycle }}
-        run: python scripts/process_rap.py --site "$SITE" --time "$CYCLE"
+          LATEST: ${{ steps.request.outputs.latest }}
+        run: |
+          if [ "$LATEST" = "1" ]; then
+            python scripts/process_rap_recent.py --site "$SITE" --reference "$CYCLE" --hours-back 5
+          else
+            python scripts/process_rap.py --site "$SITE" --time "$CYCLE"
+          fi
       - name: Publish RAP profiles and spatial winds
         run: |
           git config user.name "github-actions[bot]"
