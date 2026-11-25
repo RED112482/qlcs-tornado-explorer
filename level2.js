@@ -423,10 +423,19 @@
  function findSpatialGrid(){
    if(manualWindOverride)return null;
    const site='K'+$('site').value;
-   const selected=scanTimes.length?scanTimes[Number($('scanSlider').value)]:null;
-   const target=Date.parse(selected||($('mode').value==='archive'?$('startUTC').value:new Date().toISOString()));
-   return spatialGrids.filter(g=>g.site===site&&Math.abs(Date.parse(g.valid_time)-target)<=3600000)
-      .sort((a,b)=>Math.abs(Date.parse(a.valid_time)-target)-Math.abs(Date.parse(b.valid_time)-target))[0]||null;
+   const live=$('mode').value==='live';
+   const selected=live?null:scanTimes[Number($('scanSlider').value)];
+   const target=Date.parse(selected||(live?new Date().toISOString():$('startUTC').value));
+   if(!Number.isFinite(target))return null;
+   const candidates=spatialGrids.filter(g=>g.site===site)
+     .map(g=>({g,t:Date.parse(g.valid_time)})).filter(x=>Number.isFinite(x.t));
+   // Never attach a spatial field from a different model cycle to the
+   // displayed site-profile wind barbs.
+   const appliedTime=Date.parse(rapProfile?.valid_time||'');
+   const eligible=candidates.filter(x=>
+     (!Number.isFinite(appliedTime)||Math.abs(x.t-appliedTime)<60000)&&
+     (live?(x.t<=target&&target-x.t<=4*3600000):Math.abs(x.t-target)<=3600000));
+   return eligible.sort((a,b)=>live?b.t-a.t:Math.abs(a.t-target)-Math.abs(b.t-target))[0]?.g||null;
  }
  function renderBarbGrid(){
    barbGrid.clearLayers();
