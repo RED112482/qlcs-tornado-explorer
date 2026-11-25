@@ -280,3 +280,27 @@ AWS infrastructure is **not deployed** by this change: a cloud account, cost/usa
 **Interpretation:** Mesovortices often develop near/north of a bow apex and may move northward *relative to the bow*, but vortex migration is case-dependent and may not coincide with tornado motion. No available result establishes an operational formula to calculate tornado direction solely from bow geometry and low-level RAP winds. For warning decisions use repeated lowest-level velocity scans, couplet tracking, line segment evolution, tornado debris signatures and official WFO methods. The scenario layer is **research/training only**, not an operational tornado warning projection.
 
 References: [Weisman and Trapp 2003](https://journals.ametsoc.org/view/journals/mwre/131/11/1520-0493_2003_131_2779_lmwsla_2.0.co_2.xml); [Atkins et al. 2004 bow-echo vortices](https://journals.ametsoc.org/view/journals/mwre/132/9/1520-0493_2004_132_2224_vsaewb_2.0.co_2.xml); [NWS QLCS reference sheets](https://www.weather.gov/media/sgf/research/TWIP_QLCS_Reference_Sheets.pdf).
+
+
+## v1.8.0 — Live Level II monitoring and lag-aware live RAP
+
+### Native Level II in Latest mode
+
+1. Select radar (e.g. `KMOB`) and **Latest** mode. The Explorer retains **Decoded Level II** as its source and automatically checks `data/manifest.json` every **30 seconds** while the tab is open.
+2. Click **Start live Level II processing**. This opens an owner-authenticated prefilled GitHub issue beginning `[QLCS LIVE LEVEL II]` and containing `SITE=KMOB`. **Submit new issue** on GitHub to trigger `.github/workflows/process-level2-live-request.yml`. The backend downloads the latest two completed native Level II volumes, decodes lowest-valid base reflectivity and raw radial velocity, publishes them, and requests a Pages rebuild. This is **one-shot**, not continuous scanning.
+3. For recurring delayed updates, configure GitHub Actions repository variable **`QLCS_LIVE_RADAR_SITE=KMOB`** and enable `.github/workflows/process-level2-live.yml`. Its schedule runs about every 10 minutes, dependent on GitHub availability and processing time. The browser continues checking every 30 seconds for newly published frames.
+4. If no native scan has been published in the past **90 minutes**, the status says so and **does not silently substitute Level III**. Level III can still be explicitly selected through the data source dropdown.
+
+**Limitations:** GitHub Pages is static and cannot ingest and decode live binary Level II directly. The browser only checks for published output. GitHub issue submission is necessary to authorize a one-time backend job, and the scheduled workflow is **off by default**. The latest volume from the Unidata S3 complete-volume archive may lag the raw real-time NEXRAD chunk stream. For true near-real-time, use a long-running processor consuming Unidata `unidata-nexrad-level2-chunks` from S3 and publish decoded radar tiles to a separate API/cache. Never interpret missing/latest data as zero tornado risk.
+
+### Latest *available* RAP instead of insisting on the current hour
+
+In **Latest** mode, the Explorer now selects the most recent **genuine published RAP F00** analysis for the selected radar, requiring its valid time to be **no more than 4 hours old** and not in the future. It shows the actual RAP valid UTC time and age in minutes; it does not re-label 13Z winds as 15Z winds. The historical mode still requires a scan-time-matched RAP analysis (within 60 minutes).
+
+If no qualifying cached profile exists, **Retrieve newest available RAP F00 on GitHub** opens an owner-authenticated issue containing `LATEST=1`. `scripts/parse_rap_issue.py` validates the request; the GitHub workflow executes `scripts/process_rap_recent.py`, trying that actual requested UTC cycle and progressively older **real model cycles** (up to 5 hours back) until Herbie finds and the processor validates one. The true model cycle is published, with no fabricated data. An invalid/undecodable profile is skipped; if none is suitable, manual inputs remain unchanged.
+
+For recurring updates without requesting each cycle, optionally configure **`QLCS_LIVE_RAP_SITE=KMOB`** and `.github/workflows/process-rap-live.yml` (hourly schedule). GitHub variable setup: Repository Settings → Secrets and variables → Actions → Variables. The scheduled workflow is **off by default**. Automatic RAP loading on entering Latest mode will respect manual wind overrides; new spatial grids are only used when their valid cycle matches the displayed site RAP profile. RAP F00 availability and GitHub publication can lag radar, so the displayed age must be considered when evaluating mesoscale conditions.
+
+**No external always-on radar/RAP server has been deployed by this change.** The on-demand user authorization and processing still run through GitHub, which is substantially slower and less predictable than an AWS Fargate/Lambda ingest service.
+
+References: [NEXRAD on AWS](https://registry.opendata.aws/noaa-nexrad/); [NSF Unidata Level II S3 archive](https://www.unidata.ucar.edu/blogs/news/entry/important-changes-to-noaa-nexrad); [NOAA RAP on AWS](https://registry.opendata.aws/noaa-rap/); [Herbie latest-data retrieval](https://herbie.readthedocs.io/en/2026.9.2/user_guide/tutorial/latest.html).
