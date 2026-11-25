@@ -142,6 +142,42 @@
         5648.5
       ],
       "retrieved_utc": "2026-11-25T18:08:47.976125+00:00"
+    },
+    {
+      "model": "RAP",
+      "product": "awp130pgrb",
+      "forecast_hour": 0,
+      "cycle": "2026-11-25T17:00:00Z",
+      "valid_time": "2026-11-25T17:00:00Z",
+      "site": "KMOB",
+      "latitude": 30.68,
+      "longitude": -88.24,
+      "terrain_msl_m": 43.3,
+      "winds": {
+        "dir0": 299.7,
+        "spd0": 6.7,
+        "dir1": 23.9,
+        "spd1": 3.2,
+        "dir3": 184.8,
+        "spd3": 18.6
+      },
+      "source": "NOAA RAP F00 13-km pressure-level GRIB2 + 10 m U/V; site-nearest, linearly interpolated to 1 and 3 km AGL",
+      "levels_agl_m": [
+        10.0,
+        92.5,
+        304.7,
+        521.0,
+        742.8,
+        970.4,
+        1444.1,
+        1944.1,
+        2471.8,
+        3028.9,
+        3619.9,
+        4249.6,
+        5649.8
+      ],
+      "retrieved_utc": "2026-11-25T18:32:31.536763+00:00"
     }
   ]
 }
