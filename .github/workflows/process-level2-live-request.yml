@@ -1,0 +1,79 @@
+name: Process requested live Level II snapshot (owner issue)
+on:
+  issues:
+    types: [opened]
+permissions:
+  contents: write
+  issues: write
+  pages: write
+concurrency:
+  group: qlcs-live-request
+  cancel-in-progress: false
+jobs:
+  latest-radar:
+    if: ${{ github.event.issue.user.login == github.repository_owner && startsWith(github.event.issue.title, '[QLCS LIVE LEVEL II]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements-radar.txt
+      - name: Validate radar request (no arbitrary shell parameters)
+        id: radar
+        env:
+          REQUEST: ${{ github.event.issue.body }}
+        run: |
+          python - <<'PY'
+          import os,re
+          body=os.environ["REQUEST"]
+          m=re.search(r"(?m)^SITE=(K[A-Z0-9]{3})\s*$",body)
+          if not m: raise SystemExit("SITE must be KXXX")
+          with open(os.environ["GITHUB_OUTPUT"],"a") as f: f.write("site="+m.group(1)+"\n")
+          PY
+      - name: Install Level II decoder
+        run: pip install -r requirements-radar.txt
+      - name: Process latest two completed native Level II volumes
+        env:
+          SITE: ${{ steps.radar.outputs.site }}
+        run: python scripts/process_level2.py --site "$SITE" --latest --max-files 2 --pixels 2300 --range-km 160
+      - name: Publish reflectivity and velocity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A data/
+          if ! git diff --cached --quiet; then
+            git commit -m "Publish on-demand latest Level II snapshot"
+            for n in 1 2 3 4 5 6; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then break; fi
+              if [ "$n" = 6 ]; then exit 1; fi
+              sleep $((n*2))
+            done
+          fi
+      - name: Request Pages rebuild
+        if: success()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: gh api --method POST "/repos/$REPO/pages/builds"
+      - name: Comment on successful request
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh issue comment "$ISSUE" --repo "$REPO" --body "✅ Latest native Level II reflectivity/velocity snapshot processed. Return to the Explorer in **Latest** mode and use **Check latest Level II**. This is a one-shot request; enable the optional scheduled workflow to continue updating."
+          gh issue close "$ISSUE" --repo "$REPO" --reason completed
+      - name: Comment on unsuccessful request
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+          RUN: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: gh issue comment "$ISSUE" --repo "$REPO" --body "⚠️ Live Level II snapshot failed; review the [run log]($RUN). No valid completed Level II volume may yet be available."
