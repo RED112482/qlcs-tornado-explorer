@@ -15,7 +15,7 @@ def field(name):
 try:
     site = field("SITE").upper()
     cycle = field("CYCLE_UTC")
-    latest = re.search(r"(?m)^LATEST=(1|0)\\s*$", body)
+    latest = re.search(r"(?m)^LATEST=(1|0)\s*$", body)
     latest_mode = latest is not None and latest.group(1) == "1"
     if not re.fullmatch(r"K[A-Z0-9]{3}", site):
         raise ValueError("SITE must be KXXX")
@@ -31,5 +31,5 @@ except Exception as exc:
     print(f"Invalid RAP request: {exc}", file=sys.stderr)
     sys.exit(2)
 with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
-    out.write(f"site={site}\ncycle={cycle}\n")
+    out.write(f"site={site}\ncycle={cycle}\nlatest={int(latest_mode)}\n")
 print(f"Validated owner-authorized RAP request {site} {cycle}, latest={latest_mode}")
