@@ -15,16 +15,21 @@ def field(name):
 try:
     site = field("SITE").upper()
     cycle = field("CYCLE_UTC")
+    latest = re.search(r"(?m)^LATEST=(1|0)\\s*$", body)
+    latest_mode = latest is not None and latest.group(1) == "1"
     if not re.fullmatch(r"K[A-Z0-9]{3}", site):
         raise ValueError("SITE must be KXXX")
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:00Z", cycle):
         raise ValueError("CYCLE_UTC must be YYYY-MM-DDTHH:00Z")
     instant = dt.datetime.fromisoformat(cycle.replace("Z", "+00:00"))
-    if instant > dt.datetime.now(dt.timezone.utc) + dt.timedelta(minutes=5):
-        raise ValueError("RAP cycle cannot be in the future")
+    now = dt.datetime.now(dt.timezone.utc)
+    if instant > now + dt.timedelta(minutes=5):
+        raise ValueError("RAP reference cycle cannot be in the future")
+    if latest_mode and not (dt.timedelta(0) <= now-instant <= dt.timedelta(hours=24)):
+        raise ValueError("Latest-mode reference cycle must be in the past 24 hours")
 except Exception as exc:
     print(f"Invalid RAP request: {exc}", file=sys.stderr)
     sys.exit(2)
 with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
     out.write(f"site={site}\ncycle={cycle}\n")
-print(f"Validated owner-authorized RAP request {site} {cycle}")
+print(f"Validated owner-authorized RAP request {site} {cycle}, latest={latest_mode}")
