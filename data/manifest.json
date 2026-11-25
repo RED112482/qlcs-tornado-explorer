@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-11-09T09:54:13.748138+00:00",
+  "updated": "2026-11-25T18:09:10.634738+00:00",
   "frames": [
     {
       "site": "KHDC",
@@ -445,6 +445,43 @@
       "image_pixels": 2300,
       "source": "Unidata NEXRAD Level II",
       "s3_key": "2024/06/04/KHDC/KHDC20240604_225224_V06"
+    },
+    {
+      "site": "KHDC",
+      "time": "2026-11-25T18:00:40Z",
+      "url": "./data/KHDC/20261125_180040.png",
+      "bounds": [
+        [
+          29.067701210413524,
+          -92.09225450035125
+        ],
+        [
+          31.97049509118615,
+          -88.72250162275922
+        ]
+      ],
+      "elevation_deg": 0.26,
+      "field": "reflectivity",
+      "velocity_url": "./data/KHDC/20261125_180040_vel.png",
+      "velocity_bounds": [
+        [
+          29.06770194794882,
+          -92.09225122928338
+        ],
+        [
+          31.97049481791273,
+          -88.72247284006315
+        ]
+      ],
+      "velocity_elevation_deg": 0.26,
+      "velocity_units": "kt",
+      "velocity_aliased": true,
+      "velocity_error": null,
+      "is_live": true,
+      "render_radius_km": 160,
+      "image_pixels": 2300,
+      "source": "Unidata NEXRAD Level II",
+      "s3_key": "2026/11/25/KHDC/KHDC20261125_180040_V06"
     },
     {
       "site": "KMOB",
