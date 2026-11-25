@@ -5,6 +5,7 @@
  const $=id=>document.getElementById(id);
  const source=$('dataSource'),liveRefresh=refresh,liveFindScans=findScans;
  let autoArchiveFallback=false;
+ let livePollTimer=null,livePollBusy=false,lastShownFrameKey='';
  let level2Manifest=null,level2Overlay=null,windMarkerLayer=L.layerGroup().addTo(map);
  let vectorBoundaries={};let boundarySerial=0,rapProfile=null,rapProfiles=[],manualWindOverride=false,rapProfilesFromRepo=false;
  const frameTime=x=>Date.parse(x.time||x.valid_time||x.timestamp||0);
@@ -12,7 +13,7 @@
  const normSite=s=>(s||'').toUpperCase().replace(/^K/,'');
  const level2Frames=()=>level2Manifest?.frames||[];
  async function getManifest(){
-   try{const response=await fetch('./data/manifest.json?cache='+Math.floor(Date.now()/300000),{cache:'no-store'});
+   try{const response=await fetch('./data/manifest.json?cache='+Date.now(),{cache:'no-store'});
      if(!response.ok)throw Error('No Level II manifest published');
      const m=await response.json();
      if(!Array.isArray(m.frames))throw Error('Malformed Level II manifest');
@@ -26,7 +27,8 @@
    if($('mode').value==='archive'){
      const ts=scanTimes[+$('scanSlider').value];return ts?candidates.find(f=>f.time===ts)||null:null;
    }
-   return candidates.sort((a,b)=>frameTime(b)-frameTime(a))[0]||null;
+   return candidates.filter(f=>Number.isFinite(frameTime(f))&&frameTime(f)<=Date.now()&&Date.now()-frameTime(f)<=90*60000)
+     .sort((a,b)=>frameTime(b)-frameTime(a))[0]||null;
  }
  function showLevel2(){
    if(source.value!=='level2')return;
@@ -34,6 +36,12 @@
    clearLevel2();
    const frame=chooseFrame();
    if(!frame||!Array.isArray(frame.bounds)){
+     if($('mode').value==='live'){
+       $('radarStatus').textContent='Live Level II: waiting for processed data';
+       $('radarTime').textContent='No Level II volume processed within the past 90 minutes';
+       $('level2Info').textContent='Live monitor active; no recent processed native Level II for K'+$('site').value+'. Use Start live Level II processing (owner GitHub request) or configure its recurring workflow. Level III is a separate selectable source.';
+       return;
+     }
      $('radarStatus').textContent='Level II: no processed scan';
      $('radarTime').textContent='No decoded Level II scan published for K'+$('site').value;
      $('level2Info').textContent='No processed Level II data for this radar and selected UTC date. The calendar can select any date, but Level II archives must first be decoded through GitHub Actions → Process NEXRAD Level II. Select a processed date above to restore radar.';
@@ -50,6 +58,7 @@
      $('radarTime').textContent='K'+normSite(frame.site||level2Manifest.site)+' • '+niceTime(frame.time)+' • velocity unavailable';
      return;
    }
+   lastShownFrameKey=$('site').value+'|'+frame.time+'|'+$('radarMoment').value;
    level2Overlay=L.imageOverlay(url,bounds,{pane:'radarPane',opacity:Number($('radarOpacity').value)/100,interactive:false,crossOrigin:true}).addTo(map);
    level2Overlay.once('load',()=>{$('radarStatus').textContent='Level II '+(velocity?'Velocity':'Reflectivity')+' loaded: '+(elevation??'?')+'°';});
    level2Overlay.once('error',()=>{$('radarStatus').textContent='Level II image missing';$('level2Info').textContent='Manifest exists but radar image failed: '+frame.url;});
@@ -61,12 +70,11 @@
  }
  refresh=function(){
    if(source.value==='level3'){clearLevel2();liveRefresh();return;}
-   if($('mode').value==='live'){
-     const fresh=level2Frames().some(f=>normSite(f.site||level2Manifest.site)===normSite($('site').value)&&Date.now()-frameTime(f)<90*60000&&Date.now()>=frameTime(f));
-     if(!fresh){source.value='level3';clearLevel2();$('level2Info').textContent='No freshly processed Level II scan for this radar. Showing the independent IEM latest radar feed (Level III).';liveRefresh();return;}
-   }
+   // Native Level II mode is explicit: never silently substitute Level III,
+   // especially during a live test where velocity matters.
    showLevel2();
  };
+
  findScans=async function(){
    if(source.value==='level3'){
      if(autoArchiveFallback){source.value='level2';}else return liveFindScans();
@@ -120,30 +128,74 @@
    $('radarMoment').value=$('radarMoment').value==='reflectivity'?'velocity':'reflectivity';
    showLevel2();
  });
- async function checkLatestLevel2(){
-   $('level2Info').textContent='Refreshing latest published native Level II volumes…';
-   await getManifest();
-   const site=normSite($('site').value);
-   const recent=level2Frames().filter(f=>normSite(f.site||level2Manifest.site)===site &&
-     Date.now()-frameTime(f)>=0 && Date.now()-frameTime(f)<=90*60000)
-     .sort((a,b)=>frameTime(b)-frameTime(a));
-   if(recent.length){
-     source.value='level2';
-     $('level2Info').textContent='Most recent native Level II: '+niceTime(recent[0].time)+
-       ' (reflectivity'+(recent[0].velocity_url?' + velocity':' only')+').';
-     refresh();
+ async function checkLatestLevel2(silent=false){
+   if(livePollBusy)return;
+   livePollBusy=true;
+   const site=$('site').value,mode=$('mode').value,src=source.value;
+   if(!silent)$('liveLevel2Status').textContent='Checking processed Level II manifest for K'+site+'…';
+   try{
+     await getManifest();
+     if(mode!==$('mode').value||site!==$('site').value||src!==source.value)return;
+     const latest=level2Frames().filter(f=>
+       normSite(f.site||level2Manifest.site)===normSite(site)&&
+       frameTime(f)<=Date.now()&&Date.now()-frameTime(f)<=90*60000)
+       .sort((a,b)=>frameTime(b)-frameTime(a))[0];
+     if(latest){
+       const key=site+'|'+latest.time+'|'+$('radarMoment').value;
+       $('liveLevel2Status').textContent='Latest native Level II: '+niceTime(latest.time)+
+         ' • '+Math.max(0,Math.round((Date.now()-frameTime(latest))/60000))+' min old'+
+         (latest.velocity_url?' • BR + VEL':' • BR only')+'. Monitor checks every 30 seconds.';
+       if(src==='level2'&&(!level2Overlay||lastShownFrameKey!==key))showLevel2();
+     }else{
+       $('liveLevel2Status').textContent='No Level II image published in the past 90 min for K'+site+
+         '. Submit a live request on GitHub or enable the optional scheduled processor. Checking every 30 seconds.';
+       if(src==='level2')showLevel2();
+     }
+   }catch(e){$('liveLevel2Status').textContent='Live Level II check failed: '+e.message;}
+   finally{livePollBusy=false;}
+ }
+ $('checkLiveLevel2').addEventListener('click',()=>checkLatestLevel2(false));
+ $('requestLiveLevel2').addEventListener('click',()=>{
+   const radarSite='K'+$('site').value;
+   const title='[QLCS LIVE LEVEL II] '+radarSite+' '+new Date().toISOString().slice(0,16)+'Z';
+   const body=['QLCS latest complete Level II reflectivity and radial velocity request',
+     'SITE='+radarSite,'',
+     'This owner-authorized issue triggers one processing run for the two newest complete volumes.',
+     'For subsequent scans, configure QLCS_LIVE_RADAR_SITE in the scheduled live workflow.'].join('\n');
+   const url=new URL('https://github.com/RED112482/qlcs-tornado-explorer/issues/new');
+   url.searchParams.set('title',title);url.searchParams.set('body',body);
+   const tab=window.open(url.toString(),'_blank');
+   if(tab)tab.opener=null;
+   else window.location.href=url.toString();
+   $('liveLevel2Status').textContent='GitHub request prepared for '+radarSite+
+     '. Sign in and Submit new issue to start the job. Checking the published manifest every 30 seconds.';
+ });
+ function updateLiveControls(){
+   const live=$('mode').value==='live';
+   $('liveLevel2Tools').hidden=!live;
+   $('requestLiveLevel2').textContent='Start live Level II processing · K'+$('site').value;
+   if(live&&source.value==='level2'){
+     if(!livePollTimer)livePollTimer=setInterval(()=>{
+       if(!document.hidden)checkLatestLevel2(true);
+     },30000);
+     checkLatestLevel2(true);
    }else{
-     $('level2Info').textContent='No recently processed Level II for K'+site+
-       '. Enable the optional GitHub live processor for this radar or use the independent Level III latest feed.';
+     if(livePollTimer){clearInterval(livePollTimer);livePollTimer=null;}
    }
  }
- $('checkLiveLevel2').addEventListener('click',checkLatestLevel2);
- function updateLiveControls(){
-   $('liveLevel2Tools').hidden=$('mode').value!=='live';
- }
- $('mode').addEventListener('change',updateLiveControls);
+ $('mode').addEventListener('change',()=>{
+   if($('mode').value==='live'){
+     // Entering Live should prioritize the selected Level II decoder, even
+     // if a prior historical request had fallen back to Level III.
+     source.value='level2';
+     autoArchiveFallback=false;
+   }
+   updateLiveControls();
+ });
+ $('site').addEventListener('change',()=>{lastShownFrameKey='';updateLiveControls();});
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&$('mode').value==='live'&&source.value==='level2')checkLatestLevel2(true);});
  updateLiveControls();
- source.addEventListener('change',async()=>{autoArchiveFallback=false;$('archiveDataNotice').hidden=true;stopPlay();if($('mode').value==='archive')return findScans();if(source.value==='level2')await getManifest();refresh();});
+ source.addEventListener('change',async()=>{updateLiveControls();autoArchiveFallback=false;$('archiveDataNotice').hidden=true;stopPlay();if($('mode').value==='archive')return findScans();if(source.value==='level2')await getManifest();refresh();});
  const originalOpacity=$('radarOpacity').oninput;
  $('radarOpacity').oninput=()=>{if(source.value==='level2'&&level2Overlay)level2Overlay.setOpacity(+$('radarOpacity').value/100);else originalOpacity?.();};
  // The NOAA ArcGIS reference service returns geometries with no rendered labels.
